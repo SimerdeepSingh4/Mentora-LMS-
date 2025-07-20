@@ -64,15 +64,3 @@ mentora/
 - MongoDB
 - JWT Authentication
 
-## 🤝 Contributing
-
-Please read our [Contributing Guide](./CONTRIBUTING.md) before submitting a Pull Request to the project.
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- All our contributors and supporters
-- Open source libraries and tools used in this project
