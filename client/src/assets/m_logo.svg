@@ -1,0 +1,5 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#1E3A8A"/> <!-- Dark Blue Background -->
+  <polyline points="30,160 70,40 100,100 130,40 170,160" stroke="white" stroke-width="20" fill="none"/>
+  <polyline points="50,160 70,100 100,130 130,100 150,160" stroke="#F59E0B" stroke-width="10" fill="none"/>
+</svg>
