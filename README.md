@@ -51,18 +51,19 @@ mentora/
 
 ## 🛠 Tech Stack
 
-### Frontend
-- React.js 18+
-- Vite
-- TailwindCSS
-- Redux Toolkit
-- Shadcn UI
+### 💻 Frontend
+![React](https://img.shields.io/badge/React.js-18+-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-frontend-646CFF?logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4?logo=tailwindcss&logoColor=white)
+![Redux Toolkit](https://img.shields.io/badge/Redux-Toolkit-764ABC?logo=redux&logoColor=white)
+![Shadcn UI](https://img.shields.io/badge/Shadcn-UI-000000?logo=vercel&logoColor=white)
 
-### Backend
-- Node.js
-- Express.js
-- MongoDB
-- JWT Authentication
+### 🛠️ Backend
+![Node.js](https://img.shields.io/badge/Node.js-Runtime-339933?logo=nodedotjs&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-Backend-000000?logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Database-47A248?logo=mongodb&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-Authentication-000000?logo=jsonwebtokens&logoColor=white)
+
 
 ---
 
