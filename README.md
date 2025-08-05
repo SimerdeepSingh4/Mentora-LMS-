@@ -64,3 +64,18 @@ mentora/
 - MongoDB
 - JWT Authentication
 
+---
+
+## 🙋‍♂️ Author
+
+**Simerdeep Singh Gandhi**
+
+- Portfolio: [https://simerdeep-portfolio.vercel.app/](https://simerdeep-portfolio.vercel.app/)
+- GitHub: [@SimerdeepSingh4](https://github.com/SimerdeepSingh4)
+- LinkedIn: [Simerdeep Singh Gandhi](https://www.linkedin.com/in/simerdeep-singh-gandhi-5569a7279/)
+
+---
+
+## ✨ Show Your Support
+
+Give a ⭐️ if this project helped you!
