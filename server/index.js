@@ -62,6 +62,11 @@ app.use("/api/v1/ai", aiRoute);
 app.use("/api/v1/leaderboard", leaderboardRoute);
 app.use("/api/v1/comment", commentRoute);
 
+// Health API
+app.get("/api/v1/health", (req, res) => {
+    res.status(200).json({ status: "active", message: "Server is running smoothly" });
+});
+
 // Wildcard fallback to serve index.html for Single Page Application (SPA) client routes
 app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
