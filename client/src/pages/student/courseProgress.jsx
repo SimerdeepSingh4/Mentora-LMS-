@@ -7,9 +7,11 @@ import {
     useInCompleteCourseMutation,
     useUpdateLectureProgressMutation,
 } from "@/features/api/courseProgressApi";
-import { CheckCircle, CheckCircle2, CirclePlay, FileText } from "lucide-react";
+import { CheckCircle, CheckCircle2, CirclePlay, FileText, Sparkles, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Box, Megaphone, Award } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useParams } from "react-router-dom";
+import { userRewardsUpdated } from "@/features/authSlice";
 import { toast } from "sonner";
 import { useGetQuizQuery } from "@/features/api/quizApi";
 import { QuizUI } from "@/components/quiz/QuizUI";
@@ -18,6 +20,15 @@ import { useQuizAttempt } from "@/hooks/useQuizAttempt";
 import { useQuizTimer } from "@/hooks/useQuizTimer";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 import DocumentViewer from "@/components/document-viewer/DocumentViewer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AITutor } from "@/components/student/AITutor";
+import { showGamificationToast } from "@/utils/gamification";
+import VideoPlayer from "@/components/VideoPlayer";
+import { LectureChat } from "@/components/student/LectureChat";
+import { useGetAnnouncementsQuery } from "@/features/api/courseApi";
+import { motion } from "framer-motion";
+import { Sandbox } from "@/components/student/Sandbox";
+import logoDark from "../../assets/logo_dark.png";
 
 // Simple ObjectId validation function
 const isValidObjectId = (id) => {
@@ -29,6 +40,8 @@ const isValidObjectId = (id) => {
 const CourseProgress = () => {
     const params = useParams();
     const courseId = params.courseId;
+    const { user } = useSelector((store) => store.auth);
+    const dispatch = useDispatch();
     const { data, isLoading, isError, refetch } = useGetCourseProgressQuery(courseId);
 
     // Use the custom hook to refetch data when the component comes into focus
@@ -54,8 +67,18 @@ const CourseProgress = () => {
     const [isQuizSubmitted, setIsQuizSubmitted] = useState(false);
     const [showQuiz, setShowQuiz] = useState(false);
     const [showStartConfirmation, setShowStartConfirmation] = useState(false);
-    // ⭐⭐ CRITICAL FIX: Add state for manual attempt data
     const [manualAttemptData, setManualAttemptData] = useState(null);
+    const [activeProgressTab, setActiveProgressTab] = useState('modules'); // 'modules', 'announcements'
+    const [videoActiveTab, setVideoActiveTab] = useState("materials"); // 'materials', 'chat'
+    const [isAIOpen, setIsAIOpen] = useState(false);
+    const [showCertificate, setShowCertificate] = useState(false);
+    const [expandedModules, setExpandedModules] = useState({ "Before We Start": true }); // default expand first module
+    const toggleModule = (name) => {
+        setExpandedModules(prev => ({
+            ...prev,
+            [name]: !prev[name]
+        }));
+    };
 
     // Set the initial lecture when data is loaded
     useEffect(() => {
@@ -71,7 +94,7 @@ const CourseProgress = () => {
         return lecture?.quiz;
     }, [data, currentLecture]);
 
-    const { data: quizData, error: quizError, isLoading: isQuizLoading } = useGetQuizQuery(
+    const { data: quizData, error: quizError, isLoading: isQuizLoading, refetch: refetchQuiz } = useGetQuizQuery(
         currentQuiz?._id,
         {
             skip: !currentQuiz?._id || !isValidObjectId(currentQuiz._id),
@@ -84,7 +107,10 @@ const CourseProgress = () => {
         attemptsData,
         latestAttempt,
         refetchAttempts,
-        clearAnswers
+        clearAnswers,
+        resetAttempt,
+        quizAnswers,
+        updateAnswer
     } = useQuizAttempt(currentQuiz?._id);
 
     // Wrap the quiz submit handler to handle UI state updates
@@ -125,6 +151,18 @@ const CourseProgress = () => {
         }
     };
 
+    const handleResetQuiz = async () => {
+        const success = await resetAttempt();
+        if (success) {
+            setIsQuizSubmitted(false);
+            setIsQuizStarted(false);
+            setShowQuiz(false);
+            setManualAttemptData(null);
+            refetchQuiz();
+        }
+        return success;
+    };
+
     // Calculate if the quiz has been attempted - more robust check
     const hasValidAttempt = !!(latestAttempt &&
         typeof latestAttempt.score === 'number' &&
@@ -137,11 +175,11 @@ const CourseProgress = () => {
 
     // Store quiz submission state in localStorage to prevent issues on refresh
     useEffect(() => {
-        if (hasValidAttempt || hasAttemptedInQuizData) {
+        if (hasValidAttempt) {
             // If we have a valid attempt, store it in localStorage
             localStorage.setItem(`quiz_${currentQuiz?._id}_attempted`, 'true');
         }
-    }, [hasValidAttempt, hasAttemptedInQuizData, currentQuiz?._id]);
+    }, [hasValidAttempt, currentQuiz?._id]);
 
     // Check localStorage for quiz attempt status
     const hasAttemptedInLocalStorage = !!(currentQuiz?._id &&
@@ -354,11 +392,6 @@ const CourseProgress = () => {
                 console.log("Quiz data indicates quiz has been attempted");
                 setIsQuizSubmitted(true);
 
-                // Store in localStorage for future reference
-                if (currentQuiz?._id) {
-                    localStorage.setItem(`quiz_${currentQuiz._id}_attempted`, 'true');
-                }
-
                 // Force a refetch of attempts to get the attempt data
                 refetchAttempts();
             } else {
@@ -413,6 +446,33 @@ const CourseProgress = () => {
         () => handleQuizSubmit(currentQuiz?._id, timeLeft, currentQuiz?.timeLimit, currentQuiz)
     );
 
+    const moduleGroups = React.useMemo(() => {
+        const lectures = data?.data?.courseDetails?.lectures;
+        if (!lectures) return [];
+        const totalLecs = lectures.length;
+        const numGroups = totalLecs <= 4 ? 1 : totalLecs <= 8 ? 2 : 3;
+        const groups = [];
+        const sectionTitles = [
+            "Section 1: Course Fundamentals",
+            "Section 2: Core Concepts & Practice",
+            "Section 3: Advanced Applications"
+        ];
+        
+        for (let i = 0; i < numGroups; i++) {
+            groups.push({
+                name: sectionTitles[i] || `Section ${i + 1}: Continuation`,
+                lectures: []
+            });
+        }
+        
+        const countPerGroup = Math.ceil(totalLecs / numGroups);
+        lectures.forEach((lecture, index) => {
+            const groupIdx = Math.min(Math.floor(index / countPerGroup), numGroups - 1);
+            groups[groupIdx].lectures.push(lecture);
+        });
+        return groups.filter(g => g.lectures.length > 0);
+    }, [data?.data?.courseDetails?.lectures]);
+
     const handleStartQuiz = () => {
         if (hasAttemptedQuiz) {
             // If quiz has been attempted, just show the results
@@ -453,7 +513,15 @@ const CourseProgress = () => {
     };
 
     const handleLectureProgress = async (lectureId) => {
-        await updateLectureProgress({ courseId, lectureId });
+        try {
+            const res = await updateLectureProgress({ courseId, lectureId }).unwrap();
+            if (res?.reward) {
+                showGamificationToast(res.reward);
+                dispatch(userRewardsUpdated(res.reward));
+            }
+        } catch (err) {
+            console.error("Failed to update lecture progress:", err);
+        }
         refetch();
     };
 
@@ -517,282 +585,522 @@ const CourseProgress = () => {
         // The attempts data should already be loaded
     };
 
-    return (
-        <div className="p-4 mx-auto max-w-7xl">
-            {/* Course Title and Completion Button */}
-            <div className="flex justify-between mb-4">
-                <h1 className="text-2xl font-bold text-foreground">{courseTitle}</h1>
-                <Button onClick={completed ? handleInCompleteCourse : handleCompleteCourse} variant={completed ? "outline" : "default"}>
-                    {completed ? (
-                        <div className="flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            <span>Completed</span>
-                        </div>
-                    ) : (
-                        "Mark as completed"
-                    )}
-                </Button>
-            </div>
+    // Calculate progress stats for sidebar
+    const totalLectures = courseDetails?.lectures?.length || 0;
+    const completedLectures = progress?.filter(p => p.viewed)?.length || 0;
+    const progressPercent = totalLectures > 0 ? (completedLectures / totalLectures) * 100 : 0;
+    const totalQuizzes = courseDetails?.lectures?.filter(l => l.quiz)?.length || 0;
+    const currentLectureIndex = currentLecture ? courseDetails.lectures.findIndex(l => l._id === currentLecture._id) : 0;
+    const totalModules = moduleGroups.length;
+    const completedModules = moduleGroups.filter(g => g.lectures.every(l => isLectureCompleted(l._id))).length;
 
-            <div className="flex flex-col gap-6 md:flex-row">
-                {/* Video and Files Section */}
-                <div className="flex-1 p-4 rounded-lg shadow-lg bg-card md:w-3/5 h-fit">
-                    {/* Video Player */}
-                    <div>
-                        {/* If there's a selected lecture, use its video */}
-                        {currentLecture ? (
-                            currentLecture.videoUrl ? (
-                                <div className="relative w-full">
-                                    <video
-                                        key={currentLecture.videoUrl}
-                                        src={currentLecture.videoUrl}
-                                        controls
-                                        className="w-full h-auto md:rounded-lg"
-                                        onPlay={() => handleLectureProgress(currentLecture._id)}
-                                        onError={(e) => {
-                                            console.error('Video loading error:', e);
-                                            toast.error('Failed to load video. Please try again later.');
-                                        }}
-                                        onLoadStart={() => {
-                                            // Add loading state if needed
-                                        }}
-                                    />
+    const goToPrevLecture = () => {
+        if (currentLectureIndex > 0) {
+            handleSelectLecture(courseDetails.lectures[currentLectureIndex - 1]);
+        }
+    };
+    const goToNextLecture = () => {
+        if (currentLectureIndex < totalLectures - 1) {
+            handleSelectLecture(courseDetails.lectures[currentLectureIndex + 1]);
+        }
+    };
+
+    return (
+        <div className="w-full bg-background text-foreground pt-16">
+            <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)]">
+
+                {/* ===== LEFT SIDEBAR ===== */}
+                <div className="w-full md:w-80 lg:w-[350px] shrink-0 bg-card text-card-foreground flex flex-col p-4 border-r border-border md:h-[calc(100vh-64px)] md:sticky md:top-16 overflow-y-auto">
+                    
+                    {/* Header: Go Back + Title */}
+                    <div className="pb-4 flex items-center shrink-0">
+                        <button 
+                            onClick={() => window.history.back()} 
+                            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+                        >
+                            <ArrowLeft className="w-5 h-5 text-foreground shrink-0" />
+                            <h1 className="text-base font-bold text-foreground tracking-tight line-clamp-1">{courseTitle}</h1>
+                        </button>
+                    </div>
+
+                    {/* Progress Card */}
+                    <div className="border border-border bg-muted/40 rounded-xl p-5 space-y-4 mb-5 shrink-0 shadow-sm">
+                        <p className="text-xs font-semibold text-primary">{progressPercent.toFixed(2)}% Complete</p>
+                        
+                        {/* Thin Brand Progress Bar */}
+                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-primary rounded-full transition-all duration-500"
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
+
+                        {/* Stats Row */}
+                        <div className="flex justify-between items-center text-xs pt-1">
+                            <div>
+                                <span className="text-muted-foreground font-medium">Modules: </span>
+                                <span className="font-bold text-foreground">{completedModules}/{totalModules}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground font-medium">Sub-Modules: </span>
+                                <span className="font-bold text-foreground">{completedLectures}/{totalLectures}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground font-medium">XP: </span>
+                                <span className="font-bold text-primary">{user?.xp || 0}</span>
+                            </div>
+                        </div>
+
+                        {/* Course Completion & Certificate Trigger */}
+                        <div className="h-px bg-border/40 my-3" />
+                        <div className="pt-1">
+                            {completed ? (
+                                <div className="space-y-2">
+                                    <Button
+                                        onClick={() => setShowCertificate(true)}
+                                        className="w-full bg-[#E8602E] hover:bg-[#d4561f] text-white text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-[#E8602E]/10"
+                                    >
+                                        <Award className="w-4 h-4" />
+                                        Claim Certificate
+                                    </Button>
+                                    <button
+                                        onClick={handleInCompleteCourse}
+                                        className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 font-semibold transition-colors text-center"
+                                    >
+                                        Reset Course Progress
+                                    </button>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-center w-full h-64 rounded-lg bg-muted">
-                                    <p className="text-muted-foreground">No video available for this lecture</p>
+                                <Button
+                                    onClick={handleCompleteCourse}
+                                    disabled={progressPercent < 100}
+                                    className="w-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/25 disabled:opacity-40 disabled:hover:bg-primary/10 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5"
+                                >
+                                    <CheckCircle className="w-4 h-4" />
+                                    Mark Course Completed
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Navigation Tabs */}
+                    <div className="flex items-center gap-4 border-b border-border mb-4 px-1 shrink-0">
+                        <button 
+                            onClick={() => setActiveProgressTab('modules')} 
+                            className={`flex items-center gap-1.5 text-xs font-bold transition-colors pb-3 border-b-2 -mb-[2px] ${
+                                activeProgressTab === 'modules' ? 'text-primary border-primary' : 'text-muted-foreground border-transparent hover:text-foreground'
+                            }`}
+                        >
+                            <Box className="w-3.5 h-3.5" />
+                            All Modules
+                        </button>
+                        <button 
+                            onClick={() => setActiveProgressTab('announcements')} 
+                            className={`flex items-center gap-1.5 text-xs font-bold transition-colors pb-3 border-b-2 -mb-[2px] ${
+                                activeProgressTab === 'announcements' ? 'text-primary border-primary' : 'text-muted-foreground border-transparent hover:text-foreground'
+                            }`}
+                        >
+                            <Megaphone className="w-3.5 h-3.5" />
+                            Announcements
+                        </button>
+                    </div>
+
+                    {/* Tab Contents */}
+                    <div className="flex-1 overflow-y-auto min-h-0 focus-visible:outline-none pr-1">
+                        
+                        {/* Modules Tab Content */}
+                        {activeProgressTab === 'modules' && (
+                            <div className="space-y-1">
+                                
+                                {/* Live Discussion Row */}
+                                <div className="flex items-center justify-between p-4 py-3.5 bg-muted/30 border border-border rounded-xl mb-4">
+                                    <span className="text-sm font-bold text-foreground">Live Discussion</span>
+                                    <button 
+                                        onClick={() => setIsAIOpen(true)}
+                                        className="bg-[#E8602E] hover:bg-[#d4561f] text-white text-[11px] font-bold px-3 py-1 rounded-lg transition-colors"
+                                    >
+                                        Ask AI
+                                    </button>
+                                </div>
+
+                                {/* Accordion Modules List */}
+                                <div className="space-y-1">
+                                    {moduleGroups.map((module) => {
+                                        const isExpanded = expandedModules[module.name];
+                                        const isDone = module.lectures.every(l => isLectureCompleted(l._id));
+                                        return (
+                                            <div key={module.name} className="border-b border-border/60 pb-1 last:border-0">
+                                                
+                                                {/* Module Header */}
+                                                <button 
+                                                    onClick={() => toggleModule(module.name)}
+                                                    className="w-full flex items-center justify-between py-3 px-3 hover:bg-muted/50 rounded-lg transition-colors text-left"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[13px] font-semibold text-foreground tracking-wide">{module.name}</span>
+                                                        {isDone && (
+                                                            <span className="border border-green-500/20 bg-green-500/10 text-green-500 text-[10px] px-1.5 py-0.5 rounded font-semibold">
+                                                                Completed
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {isExpanded ? (
+                                                        <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                    ) : (
+                                                        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                    )}
+                                                </button>
+
+                                                {/* Module Sub-modules (Lectures) */}
+                                                {isExpanded && (
+                                                    <div className="bg-muted/5 p-1 rounded-lg mt-1 mb-2 space-y-1">
+                                                        {module.lectures.map((lecture) => {
+                                                            const isActive = lecture._id === currentLecture?._id;
+                                                            const lectureDone = isLectureCompleted(lecture._id);
+                                                            return (
+                                                                <button
+                                                                    key={lecture._id}
+                                                                    onClick={() => handleSelectLecture(lecture)}
+                                                                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+                                                                        isActive ? 'bg-primary/10 border-l-2 border-l-primary text-primary font-medium' : 'hover:bg-muted/40 text-muted-foreground hover:text-foreground'
+                                                                    }`}
+                                                                >
+                                                                    <div className="shrink-0">
+                                                                        {lectureDone ? (
+                                                                            <CheckCircle2 className="w-4.5 h-4.5 text-green-500" />
+                                                                        ) : isActive ? (
+                                                                            <CirclePlay className="w-4.5 h-4.5 text-primary" />
+                                                                        ) : (
+                                                                            <div className="w-4 h-4 rounded-full border border-muted-foreground/30" />
+                                                                        )}
+                                                                    </div>
+                                                                    <span className={`text-[12px] truncate ${
+                                                                        isActive ? 'text-primary font-semibold' : lectureDone ? 'text-muted-foreground' : 'text-foreground/85'
+                                                                    }`}>
+                                                                        {lecture.lectureTitle}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Announcements Tab Content */}
+                        {activeProgressTab === 'announcements' && (
+                            <div className="p-4 bg-muted/20 border border-border rounded-xl text-center text-muted-foreground space-y-2">
+                                <Megaphone className="w-8 h-8 text-primary mx-auto mb-2 opacity-80" />
+                                <p className="text-xs font-bold text-foreground">No Announcements yet</p>
+                                <p className="text-[10px]">Updates, live class reschedules, and notes will show up here.</p>
+                            </div>
+                        )}
+
+
+                    </div>
+                </div>
+
+                {/* ===== MAIN CONTENT AREA ===== */}
+                <div className="flex-1 flex flex-col">
+                    {/* Video Label Bar */}
+                    <div className="flex items-center justify-between px-5 py-2.5 border-b border-border bg-card">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                            Video Lecture <span className="text-[#E8602E]">▶</span>
+                        </span>
+                    </div>
+
+                    {/* Video Player */}
+                    <div className="bg-black">
+                        {currentLecture ? (
+                            currentLecture.videoUrl ? (
+                                <VideoPlayer
+                                    src={currentLecture.videoUrl}
+                                    onPlay={() => handleLectureProgress(currentLecture._id)}
+                                    onError={() => toast.error('Failed to load video.')}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center w-full h-80 text-[#444] bg-[#0a0a0a] text-sm">
+                                    No video available for this lecture
                                 </div>
                             )
                         ) : (
-                            // If no lecture is selected, use the first lecture's video
                             courseDetails.lectures[0]?.videoUrl ? (
-                                <div className="relative w-full">
-                                    <video
-                                        key={courseDetails.lectures[0].videoUrl}
-                                        src={courseDetails.lectures[0].videoUrl}
-                                        controls
-                                        className="w-full h-auto md:rounded-lg"
-                                        onPlay={() => handleLectureProgress(courseDetails.lectures[0]._id)}
-                                        onError={(e) => {
-                                            console.error('Video loading error:', e);
-                                            toast.error('Failed to load video. Please try again later.');
-                                        }}
-                                        onLoadStart={() => {
-                                            // Add loading state if needed
-                                        }}
-                                    />
-                                </div>
+                                <VideoPlayer
+                                    src={courseDetails.lectures[0].videoUrl}
+                                    onPlay={() => handleLectureProgress(courseDetails.lectures[0]._id)}
+                                    onError={() => toast.error('Failed to load video.')}
+                                />
                             ) : (
-                                <div className="flex items-center justify-center w-full h-64 rounded-lg bg-muted">
-                                    <p className="text-muted-foreground">No video available for this lecture</p>
+                                <div className="flex items-center justify-center w-full h-80 text-[#444] bg-[#0a0a0a] text-sm">
+                                    No video available
                                 </div>
                             )
                         )}
                     </div>
 
-                    {/* Lecture Title */}
-                    <div className="mt-2">
-                        <h3 className="text-lg font-medium text-foreground">
-                            {currentLecture
-                                ? `Lecture ${courseDetails.lectures.findIndex((lec) => lec._id === currentLecture._id) + 1} : ${currentLecture.lectureTitle}`
-                                : `Lecture 1 : ${courseDetails.lectures[0]?.lectureTitle || "Introduction"}`
-                            }
-                        </h3>
+                    {/* Lesson Navigation Bar */}
+                    <div className="flex items-center justify-center gap-4 py-3 border-b border-border bg-card">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={goToPrevLecture}
+                            disabled={currentLectureIndex <= 0}
+                            className="text-[#E8602E] disabled:text-muted-foreground"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-xs font-semibold text-muted-foreground bg-muted px-4 py-1.5 rounded-full">
+                            Lesson {currentLectureIndex + 1}/{totalLectures}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={goToNextLecture}
+                            disabled={currentLectureIndex >= totalLectures - 1}
+                            className="text-[#E8602E] disabled:text-muted-foreground"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
                     </div>
 
-                    {/* File Attachments */}
-                    {currentLecture ? (
-                        currentLecture.docInfo?.length > 0 ? (
-                            <div className="mt-4">
-                                <h3 className="text-lg font-semibold text-foreground">Lecture Files:</h3>
-                                <div className="mt-4 space-y-4">
-                                    {currentLecture.docInfo.map((doc, index) => (
-                                        <div key={index}>
-                                            <DocumentViewer
-                                                fileUrl={doc.fileUrl}
-                                                fileName={doc.fileName}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="mt-4 text-muted-foreground">No files available for this lecture.</p>
-                        )
-                    ) : (
-                        courseDetails.lectures[0]?.docInfo?.length > 0 ? (
-                            <div className="mt-4">
-                                <h3 className="text-lg font-semibold text-foreground">Lecture Files:</h3>
-                                <div className="mt-4 space-y-4">
-                                    {courseDetails.lectures[0].docInfo.map((doc, index) => (
-                                        <div key={index}>
-                                            <DocumentViewer
-                                                fileUrl={doc.fileUrl}
-                                                fileName={doc.fileName}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="mt-4 text-muted-foreground">No files available for this lecture.</p>
-                        )
-                    )}
-                </div>
-
-                {/* Lecture Sidebar */}
-                <div className="flex flex-col w-full pt-4 border-t border-border md:w-2/5 md:border-t-0 md:border-l md:pl-4 md:pt-0">
-                    <h2 className="mb-4 text-xl font-semibold text-foreground">Course Lectures</h2>
-                    <div className="flex-1 overflow-y-auto">
-                        {courseDetails?.lectures.map((lecture) => (
-                            <Card
-                                key={lecture._id}
-                                className={`mb-3 cursor-pointer transition transform ${
-                                    lecture._id === currentLecture?._id ? "bg-muted" : ""
-                                }`}
-                                onClick={() => handleSelectLecture(lecture)}
+                    {/* Video Tabs Selection */}
+                    <div className="flex-1 flex flex-col min-h-0 mt-4">
+                        <div className="bg-[#0a0a0a] border border-white/[0.05] p-1 rounded-xl mx-5 flex gap-2 shrink-0 relative z-0">
+                            {/* Materials Tab Button */}
+                            <button
+                                onClick={() => setVideoActiveTab("materials")}
+                                className="relative flex-grow flex-shrink-0 flex-1 rounded-lg text-xs font-bold py-2 text-center transition-colors focus:outline-none z-10"
+                                style={{ color: videoActiveTab === "materials" ? "#ffffff" : "#888888" }}
                             >
-                                <CardContent className="flex items-center justify-between p-4">
-                                    <div className="flex items-center">
-                                        {isLectureCompleted(lecture._id) ? (
-                                            <CheckCircle2 size={24} className="mr-2 text-green-500" />
+                                {videoActiveTab === "materials" && (
+                                    <motion.span
+                                        layoutId="activeVideoTabPill"
+                                        className="absolute inset-0 bg-[#E8602E] rounded-lg -z-10"
+                                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                                    />
+                                )}
+                                Lecture Files & Quiz
+                            </button>
+
+                            {/* Q&A Chat Tab Button */}
+                            <button
+                                onClick={() => setVideoActiveTab("chat")}
+                                className="relative flex-grow flex-shrink-0 flex-1 rounded-lg text-xs font-bold py-2 text-center transition-colors focus:outline-none z-10"
+                                style={{ color: videoActiveTab === "chat" ? "#ffffff" : "#888888" }}
+                            >
+                                {videoActiveTab === "chat" && (
+                                    <motion.span
+                                        layoutId="activeVideoTabPill"
+                                        className="absolute inset-0 bg-[#E8602E] rounded-lg -z-10"
+                                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                                    />
+                                )}
+                                Class Q&A Chat
+                            </button>
+
+                            {/* Code Sandbox Tab Button */}
+                            <button
+                                onClick={() => setVideoActiveTab("sandbox")}
+                                className="relative flex-grow flex-shrink-0 flex-1 rounded-lg text-xs font-bold py-2 text-center transition-colors focus:outline-none z-10"
+                                style={{ color: videoActiveTab === "sandbox" ? "#ffffff" : "#888888" }}
+                            >
+                                {videoActiveTab === "sandbox" && (
+                                    <motion.span
+                                        layoutId="activeVideoTabPill"
+                                        className="absolute inset-0 bg-[#E8602E] rounded-lg -z-10"
+                                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                                    />
+                                )}
+                                Code Sandbox
+                            </button>
+                        </div>
+
+                        {/* Tab 1: Materials & Quiz */}
+                        {videoActiveTab === "materials" && (
+                            <div className="flex-1 overflow-y-auto min-h-0 focus-visible:outline-none focus-visible:ring-0 p-5 space-y-6">
+                                {/* Lecture Title + Files */}
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-bold text-foreground">
+                                        {currentLecture
+                                            ? `Lecture ${currentLectureIndex + 1}: ${currentLecture.lectureTitle}`
+                                            : `Lecture 1: ${courseDetails.lectures[0]?.lectureTitle || "Introduction"}`
+                                        }
+                                    </h3>
+
+                                    {/* File Attachments */}
+                                    {currentLecture ? (
+                                        currentLecture.docInfo?.length > 0 ? (
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-foreground mb-2">Lecture Files:</h3>
+                                                <div className="space-y-3">
+                                                    {currentLecture.docInfo.map((doc, index) => (
+                                                        <div key={index}>
+                                                            <DocumentViewer fileUrl={doc.fileUrl} fileName={doc.fileName} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <CirclePlay size={24} className="mr-2 text-muted-foreground" />
-                                        )}
-                                        <div>
-                                            <CardTitle className="text-lg font-medium text-foreground">{lecture.lectureTitle}</CardTitle>
-                                        </div>
-                                    </div>
-                                    {isLectureCompleted(lecture._id) && (
-                                        <Badge variant={"outline"} className="text-green-600 bg-green-200 dark:bg-green-900 dark:text-green-300">
-                                            Completed
-                                        </Badge>
+                                            <p className="text-sm text-muted-foreground">No files available for this lecture.</p>
+                                        )
+                                    ) : (
+                                        courseDetails.lectures[0]?.docInfo?.length > 0 ? (
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-foreground mb-2">Lecture Files:</h3>
+                                                <div className="space-y-3">
+                                                    {courseDetails.lectures[0].docInfo.map((doc, index) => (
+                                                        <div key={index}>
+                                                            <DocumentViewer fileUrl={doc.fileUrl} fileName={doc.fileName} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">No files available for this lecture.</p>
+                                        )
                                     )}
-                                </CardContent>
-                            </Card>
-                        ))}
+                                </div>
+
+                                {/* Quiz Section */}
+                                {currentQuiz && (
+                                    <div className="p-6 border border-border bg-card rounded-xl shadow-sm">
+                                        <div className="flex items-center justify-between pb-4 mb-6 border-b border-border">
+                                            <div className="flex items-center gap-4">
+                                                <h3 className="text-xl font-bold text-foreground">Lecture Quiz</h3>
+                                                {hasAttemptedQuiz && (effectiveLatestAttempt || currentQuiz) && (
+                                                    <div className="px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-100 rounded-full bg-blue-50 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800">
+                                                        <span className="mr-2">Questions: {currentQuiz.questions.length}</span>
+                                                        <span className="text-blue-800 dark:text-blue-300">•</span>
+                                                        <span className="ml-2">Score: {effectiveLatestAttempt?.correctAnswers || 0}/{currentQuiz.questions.length}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {(() => {
+                                            // If quiz is being shown and has been attempted, show results
+                                            if (showQuiz && hasAttemptedQuiz) {
+                                                return (
+                                                    <div className="space-y-6">
+                                                        <QuizSummary
+                                                            quiz={currentQuiz}
+                                                            attempt={effectiveLatestAttempt}
+                                                            onClose={handleCloseResults}
+                                                            onReset={handleResetQuiz}
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+                                            // If quiz has been attempted but not being shown, show completion summary
+                                            else if (!showQuiz && hasAttemptedQuiz) {
+                                                return (
+                                                    <div className="max-w-2xl mx-auto text-center">
+                                                        <div className="p-6 border border-green-500/20 bg-green-500/5 rounded-xl">
+                                                            <h4 className="mb-3 text-lg font-bold text-green-600">Quiz Attempted</h4>
+                                                            <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                                                                <p>• You have already attempted this quiz</p>
+                                                                <p>• Your score: {effectiveLatestAttempt?.correctAnswers || 0}/{currentQuiz.questions.length}</p>
+                                                                <p>• Time taken: {effectiveLatestAttempt?.timeTaken < 0.1 ?
+                                                                    "less than 5 seconds" :
+                                                                    effectiveLatestAttempt?.timeTaken < 1 ?
+                                                                        `${Math.round((effectiveLatestAttempt?.timeTaken || 0) * 60)} seconds` :
+                                                                        `${Math.round(effectiveLatestAttempt?.timeTaken || 0)} minutes`}</p>
+                                                            </div>
+                                                            <Button
+                                                                onClick={() => {
+                                                                    // Make sure we have the latest attempt data before showing results
+                                                                    if (effectiveLatestAttempt) {
+                                                                        setShowQuiz(true);
+                                                                    } else {
+                                                                        // If we don't have attempt data, try to fetch it first
+                                                                        refetchAttempts().then(() => {
+                                                                            setShowQuiz(true);
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                className="px-6 py-2 text-sm bg-green-650 hover:bg-green-700"
+                                                            >
+                                                                See Quiz Results
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            // If quiz is being shown and not attempted, show quiz UI
+                                            else if (showQuiz && !hasAttemptedQuiz) {
+                                                return (
+                                                    <div className="space-y-6">
+                                                        <QuizUI
+                                                            quiz={currentQuiz}
+                                                            isQuizStarted={isQuizStarted}
+                                                            isQuizSubmitted={isQuizSubmitted}
+                                                            onQuizSubmit={handleQuizSubmit}
+                                                            onCloseQuiz={handleCloseQuiz}
+                                                            timeLeft={timeLeft}
+                                                            quizAnswers={quizAnswers}
+                                                            updateAnswer={updateAnswer}
+                                                            clearAnswers={clearAnswers}
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+                                            // Default case: show quiz instructions or "already attempted" message
+                                            else {
+                                                return (
+                                                    <div className="max-w-2xl mx-auto text-center">
+                                                        <div className="p-6 border border-border bg-muted/30 rounded-xl">
+                                                            <h4 className="mb-3 text-lg font-bold text-foreground">
+                                                                Quiz Instructions
+                                                            </h4>
+
+                                                            <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                                                                <p>• This quiz contains {currentQuiz.questions.length} questions</p>
+                                                                <p>• Time limit: {currentQuiz.timeLimit} minutes</p>
+                                                                <p>• You can attempt this quiz only once</p>
+                                                                <p>• Make sure you have a stable internet connection</p>
+                                                            </div>
+
+                                                            <Button
+                                                                onClick={handleStartQuiz}
+                                                                className="px-6 py-2 text-sm"
+                                                            >
+                                                                Start Quiz
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Tab 2: Q&A Chat Board */}
+                        {videoActiveTab === "chat" && (
+                            <div className="flex-1 overflow-y-auto min-h-0 focus-visible:outline-none focus-visible:ring-0 p-5">
+                                <LectureChat 
+                                    courseId={courseId} 
+                                    lectureId={currentLecture?._id || courseDetails.lectures[0]?._id} 
+                                    currentUser={user} 
+                                    courseCreatorId={courseDetails?.creator}
+                                />
+                            </div>
+                        )}
+
+                        {/* Tab 3: Code Sandbox */}
+                        {videoActiveTab === "sandbox" && (
+                            <div className="flex-1 flex flex-col min-h-0 p-5">
+                                <Sandbox />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
-
-            {/* Quiz Section */}
-            {currentQuiz && (
-                <div className="p-8 mt-8 shadow-lg bg-card rounded-xl">
-                    <div className="flex items-center justify-between pb-4 mb-8 border-b border-border">
-                        <div className="flex items-center gap-4">
-                            <h3 className="text-2xl font-bold text-foreground">Quiz</h3>
-                            {hasAttemptedQuiz && (effectiveLatestAttempt || currentQuiz) && (
-                                <div className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-100 rounded-full bg-blue-50 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800">
-                                    <span className="mr-2">Questions: {currentQuiz.questions.length}</span>
-                                    <span className="text-blue-800 dark:text-blue-300">•</span>
-                                    <span className="ml-2">Score: {effectiveLatestAttempt?.correctAnswers || 0}/{currentQuiz.questions.length}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {(() => {
-                        // If quiz is being shown and has been attempted, show results
-                        if (showQuiz && hasAttemptedQuiz) {
-                            return (
-                                <div className="space-y-6">
-                                    <QuizSummary
-                                        quiz={currentQuiz}
-                                        attempt={effectiveLatestAttempt}
-                                        onClose={handleCloseResults}
-                                    />
-                                </div>
-                            );
-                        }
-                        // If quiz has been attempted but not being shown, show completion summary
-                        else if (!showQuiz && hasAttemptedQuiz) {
-                            return (
-                                <div className="max-w-2xl mx-auto text-center">
-                                    <div className="p-8 border-2 border-green-100 rounded-xl bg-green-50/50 dark:bg-green-900/50 dark:border-green-800">
-                                        <h4 className="mb-4 text-xl font-bold text-green-800 dark:text-green-300">Quiz Attempted</h4>
-                                        <div className="space-y-3 text-green-700 dark:text-green-300">
-                                            <p>• You have already attempted this quiz</p>
-                                            <p>• Your score: {effectiveLatestAttempt?.correctAnswers || 0}/{currentQuiz.questions.length}</p>
-                                            <p>• Time taken: {effectiveLatestAttempt?.timeTaken < 0.1 ?
-                                                "less than 5 seconds" :
-                                                effectiveLatestAttempt?.timeTaken < 1 ?
-                                                    `${Math.round((effectiveLatestAttempt?.timeTaken || 0) * 60)} seconds` :
-                                                    `${Math.round(effectiveLatestAttempt?.timeTaken || 0)} minutes`}</p>
-                                        </div>
-                                        <Button
-                                            onClick={() => {
-                                                // Make sure we have the latest attempt data before showing results
-                                                if (effectiveLatestAttempt) {
-                                                    setShowQuiz(true);
-                                                } else {
-                                                    // If we don't have attempt data, try to fetch it first
-                                                    refetchAttempts().then(() => {
-                                                        setShowQuiz(true);
-                                                    });
-                                                }
-                                            }}
-                                            className="px-8 py-6 mt-6 text-lg bg-green-600 hover:bg-green-700"
-                                        >
-                                            See Quiz Results
-                                        </Button>
-                                    </div>
-                                </div>
-                            );
-                        }
-                        // If quiz is being shown and not attempted, show quiz UI
-                        else if (showQuiz && !hasAttemptedQuiz) {
-                            return (
-                                <div className="space-y-6">
-                                    <QuizUI
-                                        quiz={currentQuiz}
-                                        isQuizStarted={isQuizStarted}
-                                        isQuizSubmitted={isQuizSubmitted}
-                                        onQuizSubmit={handleQuizSubmit}
-                                        onCloseQuiz={handleCloseQuiz}
-                                        timeLeft={timeLeft}
-                                    />
-                                </div>
-                            );
-                        }
-                        // Default case: show quiz instructions or "already attempted" message
-                        else {
-                            return (
-                                <div className="max-w-2xl mx-auto text-center">
-                                    <div className="p-8 border-2 border-blue-100 rounded-xl bg-blue-50/50 dark:bg-blue-900/50 dark:border-blue-800">
-                                        <h4 className="mb-4 text-xl font-bold text-blue-800 dark:text-blue-300">
-                                            Quiz Instructions
-                                        </h4>
-
-                                        <div className="space-y-3 text-blue-700 dark:text-blue-300">
-                                            <p>• This quiz contains {currentQuiz.questions.length} questions</p>
-                                            <p>• Time limit: {currentQuiz.timeLimit} minutes</p>
-                                            <p>• You can attempt this quiz only once</p>
-                                            <p>• Make sure you have a stable internet connection</p>
-
-                                            {hasAttemptedQuiz && (
-                                                <p className="font-medium text-green-700 dark:text-green-300">
-                                                    • You have already attempted this quiz with score: {effectiveLatestAttempt?.correctAnswers || 0}/{currentQuiz.questions.length}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <Button
-                                            onClick={handleStartQuiz}
-                                            className={`px-8 py-6 mt-6 text-lg ${
-                                                hasAttemptedQuiz
-                                                    ? "bg-green-600 hover:bg-green-700"
-                                                    : ""
-                                            }`}
-                                        >
-                                            {hasAttemptedQuiz ? "Quiz is already attempted, see result" : "Start Quiz"}
-                                        </Button>
-                                    </div>
-                                </div>
-                            );
-                        }
-                    })()}
-                </div>
-            )}
 
             {/* Add Start Quiz Confirmation Modal */}
             {showStartConfirmation && (
@@ -824,6 +1132,177 @@ const CourseProgress = () => {
                                     Cancel
                                 </Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Floating AI Tutor Toggle button & Chat Panel */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+                {/* Floating AI Tutor chat panel */}
+                {isAIOpen && (
+                    <div className="w-[380px] h-[550px] bg-card border border-white/[0.08] shadow-2xl rounded-2xl overflow-hidden flex flex-col mb-4 animate-in slide-in-from-bottom-5 duration-200">
+                        <AITutor 
+                            courseId={courseId} 
+                            currentLecture={currentLecture} 
+                            onClose={() => setIsAIOpen(false)} 
+                        />
+                    </div>
+                )}
+
+                {/* Floating chat toggle bubble */}
+                <button
+                    onClick={() => setIsAIOpen((prev) => !prev)}
+                    className="w-12 h-12 rounded-full bg-[#E8602E] hover:bg-[#d4561f] shadow-lg shadow-[#E8602E]/20 flex items-center justify-center hover:scale-105 transition-all text-white border border-[#E8602E]/10 cursor-pointer"
+                >
+                    <Sparkles className="w-5 h-5 animate-pulse" />
+                </button>
+            </div>
+
+            {/* Certificate Modal */}
+            {showCertificate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+                    {/* CSS print override */}
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        @media print {
+                            @page {
+                                size: landscape;
+                                margin: 0;
+                            }
+                            html, body {
+                                height: 100vh !important;
+                                overflow: hidden !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                background-color: #070707 !important;
+                            }
+                            body * {
+                                visibility: hidden !important;
+                            }
+                            #certificate-print-area, #certificate-print-area * {
+                                visibility: visible !important;
+                            }
+                            #certificate-print-area {
+                                position: fixed !important;
+                                left: 1.5cm !important;
+                                top: 1.5cm !important;
+                                width: calc(100vw - 3cm) !important;
+                                height: calc(100vh - 3cm) !important;
+                                border: 6px double #E8602E !important;
+                                background-color: #070707 !important;
+                                padding: 40px !important;
+                                box-sizing: border-box !important;
+                                display: flex !important;
+                                flex-direction: column !important;
+                                justify-content: space-between !important;
+                                align-items: center !important;
+                                border-radius: 8px !important;
+                                margin: 0 !important;
+                                overflow: hidden !important;
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+                            #certificate-print-area * {
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
+                        }
+                    ` }} />
+
+                    <div className="relative w-full max-w-3xl bg-[#0c0c0c] border border-white/[0.08] rounded-3xl p-6 md:p-10 shadow-2xl flex flex-col space-y-6 overflow-hidden">
+                        
+                        {/* Golden/Orange glowing aura inside */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-[#E8602E]/[0.03] blur-[100px] pointer-events-none" />
+
+                        {/* Top controls: print and close */}
+                        <div className="flex justify-between items-center relative z-10">
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Course Credential</span>
+                            <button 
+                                onClick={() => setShowCertificate(false)}
+                                className="text-zinc-500 hover:text-white transition-colors font-bold text-xs"
+                            >
+                                Close
+                            </button>
+                        </div>
+
+                        {/* Printable Certificate Frame */}
+                        <div 
+                            id="certificate-print-area"
+                            className="relative border-2 border-dashed border-[#E8602E]/20 bg-[#070707] p-8 md:p-12 rounded-2xl flex flex-col items-center text-center space-y-6 overflow-hidden select-none"
+                        >
+                            {/* Watermark Logo */}
+                            <div className="absolute inset-0 opacity-[0.035] pointer-events-none flex items-center justify-center select-none">
+                                <img src={logoDark} alt="Mentora Logo Watermark" className="w-[340px] object-contain rotate-[-12deg]" />
+                            </div>
+
+                            {/* Top emblem */}
+                            <div className="flex flex-col items-center gap-1 select-none">
+                                <img src={logoDark} alt="Mentora Emblem" className="h-7 object-contain" />
+                                <div className="text-[7px] text-[#E8602E] font-bold uppercase tracking-[0.25em] mt-1 bg-[#E8602E]/5 border border-[#E8602E]/10 px-2 py-0.5 rounded-full">
+                                    Digital Credential
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-wider">Certificate of Completion</h2>
+                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">This is proudly presented to</p>
+                            </div>
+
+                            {/* Student Name */}
+                            <h1 className="text-3xl md:text-4xl font-black text-white italic tracking-wide border-b border-white/[0.08] pb-2 px-10">
+                                {user?.name || "Mentora Student"}
+                            </h1>
+
+                            <div className="space-y-2 max-w-md">
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    for successfully completing all syllabus modules, interactive quizzes, and coding sandbox challenges in the course:
+                                </p>
+                                <p className="text-base md:text-lg font-extrabold text-[#E8602E] leading-tight">
+                                    {courseDetails?.courseTitle}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-12 text-center pt-6 border-t border-white/[0.04] w-full max-w-md text-[10px]">
+                                <div>
+                                    <span className="text-zinc-500 block uppercase tracking-wider">Date of Issue</span>
+                                    <span className="text-white font-bold">{new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                </div>
+                                <div>
+                                    <span className="text-zinc-500 block uppercase tracking-wider">Credential ID</span>
+                                    <span className="text-white font-mono font-bold">MENT-{(courseId || "").slice(-4).toUpperCase()}-{(user?._id || "").slice(-4).toUpperCase()}</span>
+                                </div>
+                            </div>
+
+                            {/* Verification Footer sign */}
+                            <div className="pt-4 flex items-center gap-6 justify-center">
+                                <div className="text-center">
+                                    <p className="font-mono text-zinc-500 text-[9px] uppercase tracking-wider">Verified by</p>
+                                    <p className="font-bold text-[#E8602E] text-[10px] mt-0.5">Mentora Faculty Board</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Print/Share Actions */}
+                        <div className="flex flex-col sm:flex-row gap-3 relative z-10">
+                            <Button 
+                                onClick={() => {
+                                    window.print();
+                                }}
+                                className="flex-1 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] text-white rounded-xl font-bold py-2 text-xs flex items-center justify-center gap-1.5 transition-all"
+                            >
+                                <FileText className="w-4 h-4" />
+                                Print / PDF
+                            </Button>
+                            <Button 
+                                onClick={() => {
+                                    const shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=https://mentora.com/credentials/MENT-${(courseId || "").slice(-4).toUpperCase()}-${(user?._id || "").slice(-4).toUpperCase()}`;
+                                    window.open(shareUrl, '_blank');
+                                }}
+                                className="flex-1 bg-[#E8602E] hover:bg-[#d4561f] text-white rounded-xl font-bold py-2 text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-[#E8602E]/20"
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                Add to LinkedIn
+                            </Button>
                         </div>
                     </div>
                 </div>

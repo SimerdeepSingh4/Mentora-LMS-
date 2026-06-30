@@ -1,149 +1,90 @@
 import React, { useState } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Download, ExternalLink, Maximize, Minimize } from 'lucide-react';
-import { Skeleton } from "@/components/ui/skeleton";
+import { Download, ExternalLink, Maximize, Minimize } from 'lucide-react';
 import './document-viewer.css';
 
-// Set up the worker for PDF.js
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-
+/**
+ * PDFViewer — Displays PDF files.
+ *
+ * It uses an <iframe> pointing directly to the PDF URL.
+ * By using an iframe, we delegate the rendering to the browser's built-in, highly optimized,
+ * and feature-rich native PDF viewer. Most importantly, it fetches the resource as a standard
+ * frame navigation rather than an AJAX request, completely bypassing browser CORS restriction issues.
+ */
 const PDFViewer = ({ fileUrl, fileName }) => {
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages);
-    setIsLoading(false);
-  };
+    const toggleFullscreen = () => {
+        setIsFullscreen(!isFullscreen);
+    };
 
-  const onDocumentLoadError = (error) => {
-    console.error('Error loading PDF:', error);
-    setError('Failed to load PDF. Please try opening it in a new tab.');
-    setIsLoading(false);
-  };
+    return (
+        <div className={`flex flex-col rounded-xl overflow-hidden border border-white/[0.05] bg-[#0c0c0c] ${isFullscreen ? 'fixed inset-0 z-50 p-4 bg-[#060606]' : 'relative'}`}>
+            {/* Header controls bar */}
+            <div className="flex items-center justify-between p-3 bg-[#0d0d0d] border-b border-white/[0.05]">
+                <span className="text-xs font-semibold text-[#888] truncate max-w-[200px] md:max-w-md">
+                    {fileName || "Lecture Handout"}
+                </span>
 
-  const changePage = (offset) => {
-    setPageNumber(prevPageNumber => {
-      const newPageNumber = prevPageNumber + offset;
-      return Math.min(Math.max(1, newPageNumber), numPages || 1);
-    });
-  };
+                <div className="flex items-center gap-2">
+                    {/* Fullscreen toggle */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleFullscreen}
+                        className="border-white/[0.05] bg-transparent text-[#888] hover:text-white hover:bg-white/[0.05]"
+                    >
+                        {isFullscreen ? (
+                            <><Minimize className="h-3.5 w-3.5 mr-1.5" /> Normal</>
+                        ) : (
+                            <><Maximize className="h-3.5 w-3.5 mr-1.5" /> Fullscreen</>
+                        )}
+                    </Button>
 
-  const previousPage = () => changePage(-1);
-  const nextPage = () => changePage(1);
+                    {/* Download */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="border-white/[0.05] bg-transparent text-[#888] hover:text-white hover:bg-white/[0.05]"
+                    >
+                        <a href={fileUrl} download={fileName} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            Download
+                        </a>
+                    </Button>
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
+                    {/* Open in new tab */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="border-white/[0.05] bg-[#E8602E] text-white hover:bg-[#d4561f]"
+                    >
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            Open
+                        </a>
+                    </Button>
+                </div>
+            </div>
 
-  return (
-    <div className={`flex flex-col ${isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-4' : 'relative'}`}>
-      {/* Controls */}
-      <div className="flex items-center justify-between mb-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={previousPage}
-            disabled={pageNumber <= 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-
-          <span className="text-sm">
-            Page {pageNumber} of {numPages || '--'}
-          </span>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={nextPage}
-            disabled={pageNumber >= numPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+            {/* Document Iframe Box */}
+            <div className={`w-full relative ${isFullscreen ? 'flex-1 mt-3' : 'h-[600px] bg-[#080808]'}`}>
+                {fileUrl ? (
+                    <iframe
+                        src={`${fileUrl}#toolbar=1`}
+                        className="w-full h-full border-none"
+                        title={fileName || "PDF Document"}
+                    />
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-[#444] text-sm">
+                        No document link available
+                    </div>
+                )}
+            </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleFullscreen}
-          >
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
-            <a href={fileUrl} download={fileName} target="_blank" rel="noopener noreferrer">
-              <Download className="h-4 w-4 mr-1" />
-              Download
-            </a>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
-            <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Open
-            </a>
-          </Button>
-        </div>
-      </div>
-
-      {/* PDF Document */}
-      <div className={`overflow-auto border rounded-lg ${isFullscreen ? 'flex-1' : 'h-[500px]'}`}>
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <Skeleton className="h-[400px] w-full" />
-            <p className="mt-4 text-sm text-gray-500">Loading PDF...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <p className="text-red-500">{error}</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              asChild
-            >
-              <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-1" />
-                Open in New Tab
-              </a>
-            </Button>
-          </div>
-        )}
-
-        <Document
-          file={fileUrl}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
-          loading={<div className="flex justify-center p-4"><Skeleton className="h-[400px] w-full" /></div>}
-          className="flex justify-center"
-        >
-          <Page
-            pageNumber={pageNumber}
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-            className="shadow-md"
-            scale={isFullscreen ? 1.5 : 1}
-          />
-        </Document>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default PDFViewer;

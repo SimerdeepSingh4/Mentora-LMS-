@@ -1,22 +1,16 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { useEditLectureMutation, useGetLectureByIdQuery, useRemoveLectureMutation } from "@/features/api/courseApi";
 import axios from "axios";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Minus, Trash2, Video, FileUp, Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ShieldAlert } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useCreateQuizMutation, useGetQuizQuery } from "@/features/api/quizApi";
+import { useGenerateAIQuizMutation } from "@/features/api/aiApi";
 import { useSocket } from "@/hooks/useSocket";
 
 const MEDIA_API = "http://localhost:8080/api/v1/media";
@@ -61,6 +55,7 @@ const LectureTab = () => {
 
   const [editLecture, { data, isLoading, error, isSuccess }] = useEditLectureMutation();
   const [removeLecture, { data: removeData, isLoading: removeLoading, isSuccess: removeSuccess }] = useRemoveLectureMutation();
+  const [generateAIQuiz, { isLoading: isAiGenerating }] = useGenerateAIQuizMutation();
 
   // Import the socket hook at the top of the file
   const { socketId, getUploadProgress, resetUploadProgress } = useSocket();
@@ -130,7 +125,7 @@ const LectureTab = () => {
             if (clientProgress > 0) {
               setUploadProgress(clientProgress);
             }
-          },
+          }
         });
 
         if (res.data.success) {
@@ -305,6 +300,14 @@ const LectureTab = () => {
     setQuestions(newQuestions);
   };
 
+  const handleDecrementTime = () => {
+    setTimeLimit(prev => Math.max(1, prev - 1));
+  };
+
+  const handleIncrementTime = () => {
+    setTimeLimit(prev => prev + 1);
+  };
+
   const handleQuizSubmit = async () => {
     try {
       // Validate questions
@@ -337,168 +340,336 @@ const LectureTab = () => {
     }
   };
 
+  const generateAIQuizHandler = async () => {
+    try {
+      const response = await generateAIQuiz({ lectureId, courseId }).unwrap();
+      if (response.success && response.questions) {
+        setQuestions(response.questions);
+        toast.success("AI Quiz questions drafted successfully!");
+      }
+    } catch (err) {
+      console.error("AI Quiz generation error:", err);
+      toast.error(err?.data?.message || "Failed to generate quiz with AI");
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader className="flex justify-between">
-        <div>
-          <CardTitle>Edit Lecture</CardTitle>
-          <CardDescription>
-            Make changes and click save when done.
-          </CardDescription>
+    <div className="w-full bg-[#0c0c0c] border border-white/[0.05] rounded-2xl overflow-hidden shadow-2xl">
+      {/* Top Header Actions */}
+      <div className="p-6 border-b border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-white/[0.01] to-transparent">
+        <div className="space-y-1">
+          <h2 className="text-base font-extrabold text-white tracking-tight">Lecture Settings</h2>
+          <p className="text-xs text-white/40 font-medium">Configure video properties, append resources, and configure test quizzes.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button disbaled={removeLoading} variant="destructive" onClick={removeLectureHandler}>
-            {
-              removeLoading ? <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin"/>
-              Please wait
-              </> : "Remove Lecture"
-            }
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+        
+        <Button 
+          disabled={removeLoading} 
+          onClick={removeLectureHandler}
+          className="border border-red-500/15 bg-red-500/5 hover:bg-red-500/10 text-red-400 hover:text-red-300 hover:border-red-500/25 text-xs font-bold px-4 h-9 rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+        >
+          {removeLoading ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Removing...
+            </>
+          ) : (
+            <>
+              <Trash2 className="w-3.5 h-3.5" /> Remove Lecture
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Main Form Fields */}
+      <div className="p-6 md:p-8 space-y-8">
+        
+        {/* Lecture Title */}
         <div className="space-y-2">
-          <Label>Title</Label>
+          <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Lecture Title</Label>
           <Input
             value={lectureTitle}
             onChange={(e) => setLectureTitle(e.target.value)}
             type="text"
             placeholder="Ex. Introduction to Javascript"
+            className="w-full h-11 bg-white/[0.02] border-white/[0.06] focus:border-[#E8602E]/60 focus:ring-1 focus:ring-[#E8602E]/30 text-sm placeholder-white/20 rounded-xl text-white outline-none transition-all"
           />
         </div>
-        <div className="space-y-2">
-          <Label>
-            Video <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            type="file"
-            accept="video/*"
-            onChange={fileChangeHandler}
-            placeholder="Ex. Introduction to Javascript"
-          />
+
+        {/* Video & PDF Upload Section Grid */}
+        <div className="grid gap-6 md:grid-cols-2">
+          
+          {/* Video Dragzone File Uploader */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">
+              Lecture Video <span className="text-[#E8602E]">*</span>
+            </Label>
+            
+            <div className="border border-dashed border-white/[0.1] hover:border-[#E8602E]/40 bg-white/[0.01] rounded-2xl p-6 text-center cursor-pointer transition-all relative group">
+              <input 
+                type="file" 
+                onChange={fileChangeHandler} 
+                accept="video/*" 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              {uploadVideoInfo?.videoUrl ? (
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/20 text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Video Ready
+                  </div>
+                  <p className="text-xs text-white/50 max-w-sm mx-auto truncate mt-1">{uploadVideoInfo.videoUrl}</p>
+                  <p className="text-[9px] text-white/30">Click or drag a new video to replace</p>
+                </div>
+              ) : (
+                <div className="space-y-2 py-2">
+                  <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto text-white/40 group-hover:text-[#E8602E] transition-colors">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-white">Upload lecture video</p>
+                  <p className="text-[10px] text-white/30">Supports MP4, MOV, or WEBM up to 100MB</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Documents Dragzone File Uploader */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Attachments & Documents</Label>
+            
+            <div className="border border-dashed border-white/[0.1] hover:border-[#E8602E]/40 bg-white/[0.01] rounded-2xl p-6 text-center cursor-pointer transition-all relative group">
+              <input 
+                type="file" 
+                onChange={(e) => fileUploadHandler(e, "document")} 
+                accept=".pdf,.docx,.ppt,.pptx" 
+                multiple 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="space-y-2 py-2">
+                <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto text-white/40 group-hover:text-[#E8602E] transition-colors">
+                  <FileUp className="w-4 h-4" />
+                </div>
+                <p className="text-xs font-bold text-white">Upload materials</p>
+                <p className="text-[10px] text-white/30">Supports PDF, DOCX, or PPT up to 15MB</p>
+              </div>
+            </div>
+          </div>
+
         </div>
-        <div className="space-y-2">
-          <Label>Upload PDF, DOCX, or PPT</Label>
-          <Input
-            type="file"
-            accept=".pdf,.docx,.ppt,.pptx"
-            onChange={(e) => fileUploadHandler(e, "document")}
-            multiple
-          />
-          {uploadDocInfo.length > 0 && (
-            <div className="mt-2 space-y-2">
+
+        {/* Uploaded Documents List */}
+        {uploadDocInfo.length > 0 && (
+          <div className="space-y-2.5">
+            <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Attached Materials</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
               {uploadDocInfo.map((doc, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border rounded-lg bg-card">
-                  <span className="text-sm text-foreground">{doc.fileName}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                <div key={index} className="flex items-center justify-between p-3 border border-white/[0.05] rounded-xl bg-white/[0.01]">
+                  <span className="text-xs text-white/70 truncate mr-2">{doc.fileName}</span>
+                  <button
                     onClick={() => removeDocument(index)}
-                    className="text-destructive hover:text-destructive/90"
+                    className="w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/20 bg-red-500/5 text-red-400 hover:text-red-300 flex items-center justify-center transition-all cursor-pointer shrink-0"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <Switch checked={isFree} onCheckedChange={setIsFree} id="airplane-mode" />
-          <Label htmlFor="airplane-mode">Is this video FREE</Label>
-        </div>
-
-        {mediaProgress && (
-          <div className="space-y-2">
-            <Progress value={uploadProgress} />
-            <p className="text-sm text-muted-foreground">{uploadProgress}% uploaded</p>
           </div>
         )}
 
-        {/* Quiz Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Quiz Settings</h3>
+        {/* Free Toggle */}
+        <div className="flex items-center justify-between bg-white/[0.02] border border-white/[0.04] p-4 rounded-xl">
+          <div className="space-y-0.5">
+            <Label htmlFor="preview-mode" className="text-xs font-bold text-white leading-none block">Preview Access</Label>
+            <span className="text-[10px] text-white/40">Enable this to allow students to watch this video without buying the course.</span>
+          </div>
+          <Switch checked={isFree} onCheckedChange={setIsFree} id="preview-mode" />
+        </div>
 
-          <div className="space-y-4">
+        {/* Upload progress indicator */}
+        {mediaProgress && (
+          <div className="space-y-2 bg-[#121212] border border-white/[0.06] p-4 rounded-xl">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-white/70">Uploading files to server...</span>
+              <span className="text-[#E8602E]">{uploadProgress}%</span>
+            </div>
+            <Progress value={uploadProgress} className="h-1.5 bg-white/[0.03]" />
+          </div>
+        )}
+
+        {/* Divider separator */}
+        <div className="border-t border-white/[0.04] pt-8" />
+
+        {/* Quiz Builder Panel */}
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-[#E8602E]" /> Quiz Settings
+              </h3>
+              <p className="text-[11px] text-white/40">Build an assessment test students must complete after watching this lecture.</p>
+            </div>
+          </div>
+
+          <div className="space-y-5 bg-[#090909] border border-white/[0.04] rounded-2xl p-5 md:p-6">
             <div className="space-y-2">
-              <Label>Time Limit (minutes)</Label>
-              <Input
-                type="number"
-                value={timeLimit}
-                onChange={(e) => setTimeLimit(Number(e.target.value))}
-                min="1"
-              />
+              <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Time Limit (minutes)</Label>
+              <div className="flex items-center bg-white/[0.02] border border-white/[0.06] rounded-xl h-10 w-32 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={handleDecrementTime}
+                  className="w-10 h-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.04] transition-all border-r border-white/[0.06] select-none cursor-pointer"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <input
+                  type="text"
+                  value={timeLimit}
+                  onChange={(e) => {
+                    const val = Number(e.target.value.replace(/\D/g, ''));
+                    setTimeLimit(val > 0 ? val : 1);
+                  }}
+                  className="flex-1 w-full h-full text-center bg-transparent border-0 text-xs font-bold text-white focus:outline-none focus:ring-0 focus-visible:ring-0 p-0 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleIncrementTime}
+                  className="w-10 h-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.04] transition-all border-l border-white/[0.06] select-none cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Questions Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Questions</h4>
-              {questions.map((q, qIndex) => (
-                <div key={qIndex} className="p-4 space-y-4 border rounded-lg">
-                  <div className="space-y-2">
-                    <Label>Question {qIndex + 1}</Label>
-                    <Input
-                      value={q.question}
-                      onChange={(e) => updateQuestion(qIndex, "question", e.target.value)}
-                      placeholder="Enter your question"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Options</Label>
-                    {q.options.map((option, oIndex) => (
-                      <div key={oIndex} className="flex items-center gap-2">
-                        <Input
-                          value={option}
-                          onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                          placeholder={`Option ${oIndex + 1}`}
-                        />
-                        <input
-                          type="radio"
-                          name={`correct-${qIndex}`}
-                          checked={q.correctAnswer === oIndex}
-                          onChange={() => updateQuestion(qIndex, "correctAnswer", oIndex)}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm text-muted-foreground">Correct</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            {questions.length > 0 && (
+              <div className="space-y-5">
+                <Label className="text-[10px] font-bold text-white/45 uppercase tracking-widest block border-b border-white/[0.04] pb-2">Questions Outline</Label>
+                {questions.map((q, qIndex) => (
+                  <div key={qIndex} className="p-5 space-y-4 border border-white/[0.05] bg-[#0c0c0c] rounded-xl relative group">
+                    
+                    {/* Remove Question Icon */}
+                    <button 
+                      onClick={() => removeQuestion(qIndex)}
+                      className="absolute top-4 right-4 w-7 h-7 rounded-lg border border-red-500/10 hover:border-red-500/20 bg-red-500/5 text-red-400 hover:text-red-350 flex items-center justify-center transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
 
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Question {qIndex + 1}</Label>
+                      <Input
+                        value={q.question}
+                        onChange={(e) => updateQuestion(qIndex, "question", e.target.value)}
+                        placeholder="Enter your question"
+                        className="w-full h-10 bg-white/[0.02] border-white/[0.06] text-xs rounded-xl text-white outline-none"
+                      />
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Multiple Choice Options</Label>
+                      <div className="grid gap-2.5 sm:grid-cols-2">
+                        {q.options.map((option, oIndex) => (
+                          <div key={oIndex} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.01] border border-white/[0.04]">
+                            <Input
+                              value={option}
+                              onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                              placeholder={`Option ${oIndex + 1}`}
+                              className="flex-1 h-9 bg-transparent border-0 text-xs focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder-white/20 p-0"
+                            />
+                            
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none shrink-0 group/label">
+                              <input
+                                type="radio"
+                                name={`correct-${qIndex}`}
+                                checked={q.correctAnswer === oIndex}
+                                onChange={() => updateQuestion(qIndex, "correctAnswer", oIndex)}
+                                className="w-3.5 h-3.5 accent-[#E8602E] cursor-pointer"
+                              />
+                              <span className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                                q.correctAnswer === oIndex 
+                                  ? "text-[#E8602E]" 
+                                  : "text-white/40 group-hover/label:text-white/80"
+                              }`}>
+                                Correct
+                              </span>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Quiz Buttons Grid */}
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 type="button"
                 variant="outline"
                 onClick={addQuestion}
-                className="w-full"
+                className="flex-1 h-10 border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.04] hover:text-white rounded-xl text-xs font-bold text-white/50"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Question
+                <Plus className="w-4 h-4 mr-2" /> Add Question
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isAiGenerating}
+                onClick={generateAIQuizHandler}
+                className="flex-1 h-10 border-white/[0.06] bg-[#E8602E]/8 hover:bg-[#E8602E]/15 border-[#E8602E]/20 text-[#E8602E] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {isAiGenerating ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Drafting...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" /> Generate with AI
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleQuizSubmit}
+                disabled={questions.length === 0}
+                className="flex-1 h-10 bg-[#E8602E] hover:bg-[#d4561f] text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Save Quiz Layout
               </Button>
             </div>
-
-            <Button
-              onClick={handleQuizSubmit}
-              disabled={questions.length === 0}
-            >
-              Save Quiz
-            </Button>
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <Button disabled={isLoading} onClick={editLectureHandler}>
-            {
-              isLoading ? <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin"/>
-              Please wait
-              </> : "Update Lecture"
-            }
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Save Action Footer */}
+      <div className="p-6 border-t border-white/[0.04] bg-white/[0.01] flex items-center justify-end gap-3">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate(`/instructor/course/${courseId}/lecture`)}
+          className="h-10 border-white/[0.06] bg-transparent hover:bg-white/[0.05] hover:text-white rounded-xl text-xs font-bold transition-all text-white/50"
+        >
+          Cancel
+        </Button>
+        
+        <Button 
+          disabled={isLoading} 
+          onClick={editLectureHandler}
+          className="h-10 bg-[#E8602E] hover:bg-[#d4561f] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md shadow-[#E8602E]/10 px-6"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Update Lecture Details"
+          )}
+        </Button>
+      </div>
+    </div>
   );
 };
 

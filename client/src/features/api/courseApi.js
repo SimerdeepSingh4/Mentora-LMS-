@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const courseApi = createApi({
     reducerPath: "courseApi",
-    tagTypes: ["Refetch_Creator_Course", "Refetch_Lecture", "Refetch_Dashboard"],
+    tagTypes: ["Refetch_Creator_Course", "Refetch_Lecture", "Refetch_Dashboard", "Refetch_Announcement"],
     baseQuery: fetchBaseQuery({
         baseUrl: `${import.meta.env.VITE_SERVER_URL}/api/v1/course`,
         credentials: "include",
@@ -143,6 +143,28 @@ export const courseApi = createApi({
             }),
             invalidatesTags: ["Refetch_Creator_Course"],
         }),
+        createAnnouncement: builder.mutation({
+            query: ({ courseId, title, content }) => ({
+                url: `/${courseId}/announcement`,
+                method: "POST",
+                body: { title, content },
+            }),
+            invalidatesTags: ["Refetch_Announcement"],
+        }),
+        getAnnouncements: builder.query({
+            query: (courseId) => ({
+                url: `/${courseId}/announcement`,
+                method: "GET",
+            }),
+            providesTags: ["Refetch_Announcement"],
+        }),
+        deleteAnnouncement: builder.mutation({
+            query: ({ courseId, announcementId }) => ({
+                url: `/${courseId}/announcement/${announcementId}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: ["Refetch_Announcement"],
+        }),
         getInstructorDashboardStats: builder.query({
             query: () => ({
                 url: "/instructor/stats",
@@ -169,6 +191,9 @@ export const {
     usePublishCourseMutation,
     useDeleteCourseMutation,
     useGetInstructorDashboardStatsQuery,
+    useCreateAnnouncementMutation,
+    useGetAnnouncementsQuery,
+    useDeleteAnnouncementMutation,
 } = courseApi;
 
 export const invalidateDashboardCache = () => {

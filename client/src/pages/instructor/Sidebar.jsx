@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ChartNoAxesColumn, LogOut, SquareLibrary } from "lucide-react";
+import { ChartNoAxesColumn, LogOut, SquareLibrary, Sparkles } from "lucide-react";
 import React from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -21,49 +21,54 @@ const Sidebar = () => {
     };
 
     return (
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen bg-[#060606] text-white">
             {/* Sidebar */}
-            <aside className="hidden lg:flex w-[260px] flex-col border-r border-gray-200 dark:border-gray-800 p-5 sticky top-0 h-screen bg-gradient-to-b from-gray-100 to-gray-300 dark:from-gray-900 dark:to-gray-800 shadow-lg">
-                <nav className="flex flex-col mt-20 space-y-6">
-                    <NavLink
-                        to="dashboard"
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700 ${
-                                isActive ? "bg-gray-300 dark:bg-gray-700 font-semibold border-l-4 border-blue-500 pl-5" : "pl-4"
-                            }`
-                        }
-                        aria-label="Dashboard"
-                    >
-                        <ChartNoAxesColumn size={22} />
-                        <span>Dashboard</span>
-                    </NavLink>
+            <aside className="hidden lg:flex w-[260px] flex-col border-r border-white/[0.05] pt-24 pb-6 px-6 sticky top-0 h-screen bg-[#090909] justify-between">
+                    {/* Navigation list */}
+                    <nav className="flex flex-col space-y-2">
+                        <NavLink
+                            to="dashboard"
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-4 py-3 rounded-xl transition-all border text-xs font-bold tracking-wide ${
+                                    isActive 
+                                        ? "bg-[#E8602E]/8 border-[#E8602E]/20 text-[#E8602E]" 
+                                        : "border-transparent text-white/40 hover:text-white/80 hover:bg-white/[0.02]"
+                                }`
+                            }
+                            aria-label="Dashboard"
+                        >
+                            <ChartNoAxesColumn className="w-4 h-4 shrink-0" />
+                            <span>Dashboard</span>
+                        </NavLink>
 
-                    <NavLink
-                        to="course"
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700 ${
-                                isActive ? "bg-gray-300 dark:bg-gray-700 font-semibold border-l-4 border-blue-500 pl-5" : "pl-4"
-                            }`
-                        }
-                        aria-label="Courses"
-                    >
-                        <SquareLibrary size={22} />
-                        <span>Courses</span>
-                    </NavLink>
+                        <NavLink
+                            to="course"
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-4 py-3 rounded-xl transition-all border text-xs font-bold tracking-wide ${
+                                    isActive 
+                                        ? "bg-[#E8602E]/8 border-[#E8602E]/20 text-[#E8602E]" 
+                                        : "border-transparent text-white/40 hover:text-white/80 hover:bg-white/[0.02]"
+                                }`
+                            }
+                            aria-label="Courses"
+                        >
+                            <SquareLibrary className="w-4 h-4 shrink-0" />
+                            <span>Courses</span>
+                        </NavLink>
+                    </nav>
 
-                    {/* Logout Button */}
-                    <Button
-                        variant="destructive"
-                        className="flex items-center gap-3 p-3 mt-auto transition-all duration-300 hover:bg-red-600"
-                        onClick={handleLogout} // ✅ Use function
-                    >
-                        <LogOut className="w-5 h-5" /> Logout
-                    </Button>
-                </nav>
+                {/* Logout Action at Bottom */}
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.04] bg-transparent text-white/40 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/15 transition-all text-xs font-bold cursor-pointer"
+                >
+                    <LogOut className="w-4 h-4 shrink-0" />
+                    <span>Sign Out</span>
+                </button>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 p-8 overflow-auto bg-gray-50 dark:bg-gray-900">
+            {/* Main Content Pane */}
+            <main className="flex-1 overflow-auto bg-[#060606] text-white">
                 <Outlet />
             </main>
         </div>

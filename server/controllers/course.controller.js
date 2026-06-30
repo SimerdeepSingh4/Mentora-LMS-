@@ -3,6 +3,7 @@ import { Lecture } from "../models/lecture.model.js";
 import { User } from "../models/user.model.js";
 import { deleteMediaFromCloudinary, deleteVideoFromCloudinary, uploadMedia } from "../utils/cloudinary.js";
 import { CoursePurchase } from "../models/coursePurchase.model.js";
+import jwt from "jsonwebtoken";
 
 export const createCourse = async (req, res) => {
     try {
@@ -11,6 +12,15 @@ export const createCourse = async (req, res) => {
             return res.status(400).json({
                 message: "Course title and category is required."
             })
+        }
+
+        if (category === "Instructor Guide") {
+            const user = await User.findById(req.id);
+            if (!user || user.role !== "admin") {
+                return res.status(403).json({
+                    message: "Only administrators can create courses under the Instructor Guide category."
+                });
+            }
         }
 
         let courseThumbnail;
@@ -53,6 +63,22 @@ export const searchCourse = async (req, res) => {
     try {
         const { query = "", categories = [], sortByPrice = "" } = req.query;
         console.log("Raw search params:", { query, categories, sortByPrice });
+
+        let userRole = "student";
+        const token = req.cookies?.token;
+        if (token) {
+            try {
+                const decode = jwt.verify(token, process.env.SECRET_KEY);
+                if (decode) {
+                    const user = await User.findById(decode.userId);
+                    if (user) {
+                        userRole = user.role;
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
 
         // Log the type of categories to help with debugging
         console.log("Categories type:", typeof categories, Array.isArray(categories));
@@ -101,6 +127,22 @@ export const searchCourse = async (req, res) => {
 
         console.log("Search criteria:", JSON.stringify(searchCriteria, null, 2));
         console.log("Sort options:", sortOptions);
+
+        if (userRole !== "instructor" && userRole !== "admin") {
+            const admins = await User.find({ role: "admin" }).select("_id");
+            const adminIds = admins.map(admin => admin._id);
+            searchCriteria.creator = { $nin: adminIds };
+
+            if (searchCriteria.category) {
+                searchCriteria.$and = [
+                    { category: searchCriteria.category },
+                    { category: { $ne: "Instructor Guide" } }
+                ];
+                delete searchCriteria.category;
+            } else {
+                searchCriteria.category = { $ne: "Instructor Guide" };
+            }
+        }
 
         // First, let's see how many total published courses we have
         const totalPublished = await Course.countDocuments({ isPublished: true });
@@ -180,17 +222,41 @@ const formatCoursePrice = (price) => {
     return price;
 };
 
-export const getPublishedCourse = async (_, res) => {
+export const getPublishedCourse = async (req, res) => {
     try {
-        console.log("Fetching published courses...");
-        const courses = await Course.find({ isPublished: true })
+        let userRole = "student";
+        const token = req.cookies?.token;
+        if (token) {
+            try {
+                const decode = jwt.verify(token, process.env.SECRET_KEY);
+                if (decode) {
+                    const user = await User.findById(decode.userId);
+                    if (user) {
+                        userRole = user.role;
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        console.log("Fetching published courses for userRole:", userRole);
+        const query = { isPublished: true };
+        if (userRole !== "instructor" && userRole !== "admin") {
+            const admins = await User.find({ role: "admin" }).select("_id");
+            const adminIds = admins.map(admin => admin._id);
+            query.category = { $ne: "Instructor Guide" };
+            query.creator = { $nin: adminIds };
+        }
+
+        const courses = await Course.find(query)
             .populate({
                 path: "creator",
                 select: "name photoUrl"
             })
             .populate({
                 path: "lectures",
-                select: "lectureTitle videoUrl"
+                select: "lectureTitle isPreviewFree"
             });
 
         console.log("Found courses:", courses?.length || 0);
@@ -271,6 +337,22 @@ export const editCourse = async (req, res) => {
             return res.status(404).json({
                 message: "Course not found!"
             })
+        }
+
+        // Ensure only the course creator can edit it
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to edit this course!"
+            });
+        }
+
+        if (category === "Instructor Guide" || course.category === "Instructor Guide") {
+            const user = await User.findById(req.id);
+            if (!user || user.role !== "admin") {
+                return res.status(403).json({
+                    message: "Only administrators can edit or assign courses to the Instructor Guide category."
+                });
+            }
         }
 
         let courseThumbnail;
@@ -365,17 +447,28 @@ export const createLecture = async (req, res) => {
             })
         };
 
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                message: "Course not found"
+            });
+        }
+
+        // Ensure only the course creator can create lectures
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to create a lecture for this course!"
+            });
+        }
+
         // create lecture with course reference
         const lecture = await Lecture.create({
             lectureTitle,
             course: courseId
         });
 
-        const course = await Course.findById(courseId);
-        if (course) {
-            course.lectures.push(lecture._id);
-            await course.save();
-        }
+        course.lectures.push(lecture._id);
+        await course.save();
 
         return res.status(201).json({
             lecture,
@@ -399,6 +492,14 @@ export const getCourseLecture = async (req, res) => {
                 message: "Course not found"
             })
         }
+
+        // Ensure only the course creator can access all lectures via this endpoint
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to access this course's lectures!"
+            });
+        }
+
         return res.status(200).json({
             lectures: course.lectures
         });
@@ -430,6 +531,13 @@ export const editLecture = async (req, res) => {
             return res.status(404).json({
                 message: "Course not found!"
             })
+        }
+
+        // Ensure only the course creator can edit the lecture
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to edit this lecture!"
+            });
         }
 
         // Update lecture fields while preserving course reference
@@ -499,12 +607,26 @@ export const editLecture = async (req, res) => {
 export const removeLecture = async (req, res) => {
     try {
         const { lectureId } = req.params;
-        const lecture = await Lecture.findByIdAndDelete(lectureId);
+
+        // Find lecture first to get its course reference
+        const lecture = await Lecture.findById(lectureId);
         if (!lecture) {
             return res.status(404).json({
                 message: "Lecture not found!"
             });
         }
+
+        // Find the course to check creator permissions
+        const course = await Course.findById(lecture.course);
+        if (course && course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to delete this lecture!"
+            });
+        }
+
+        // Delete the lecture
+        await Lecture.findByIdAndDelete(lectureId);
+
         if (lecture.publicId) {
             await deleteVideoFromCloudinary(lecture.publicId);
         }
@@ -533,6 +655,15 @@ export const getLectureById = async (req, res) => {
                 message: "Lecture not found!"
             });
         }
+
+        // Find the course to check creator permissions
+        const course = await Course.findById(lecture.course);
+        if (course && course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to view this lecture's details!"
+            });
+        }
+
         return res.status(200).json({
             lecture
         });
@@ -554,6 +685,13 @@ export const togglePublishCourse = async (req, res) => {
         if (!course) {
             return res.status(404).json({
                 message: "Course not found!"
+            });
+        }
+
+        // Ensure only the course creator can publish/unpublish it
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to publish or unpublish this course!"
             });
         }
         course.isPublished = publish === "true";
@@ -634,6 +772,111 @@ export const getInstructorDashboardStats = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to get dashboard statistics"
+        });
+    }
+};
+
+export const createAnnouncement = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { title, content } = req.body;
+
+        if (!title || !content) {
+            return res.status(400).json({
+                message: "Title and content are required."
+            });
+        }
+
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                message: "Course not found."
+            });
+        }
+
+        // Ensure only the course creator can make announcements
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to create announcements for this course!"
+            });
+        }
+
+        const newAnnouncement = {
+            title,
+            content,
+            createdAt: new Date()
+        };
+
+        course.announcements = course.announcements || [];
+        course.announcements.push(newAnnouncement);
+        await course.save();
+
+        return res.status(201).json({
+            success: true,
+            announcements: course.announcements,
+            message: "Announcement created successfully."
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to create announcement."
+        });
+    }
+};
+
+export const getAnnouncements = async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                message: "Course not found."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            announcements: course.announcements || []
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to load announcements."
+        });
+    }
+};
+
+export const deleteAnnouncement = async (req, res) => {
+    try {
+        const { courseId, announcementId } = req.params;
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                message: "Course not found."
+            });
+        }
+
+        // Ensure only course creator can delete announcements
+        if (course.creator.toString() !== req.id) {
+            return res.status(403).json({
+                message: "You are not authorized to delete announcements!"
+            });
+        }
+
+        course.announcements = course.announcements.filter(
+            ann => ann._id.toString() !== announcementId
+        );
+        await course.save();
+
+        return res.status(200).json({
+            success: true,
+            announcements: course.announcements,
+            message: "Announcement deleted successfully."
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Failed to delete announcement."
         });
     }
 };

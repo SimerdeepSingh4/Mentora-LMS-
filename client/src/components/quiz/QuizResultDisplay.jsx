@@ -1,333 +1,158 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Trophy, Award, AlertCircle } from 'lucide-react';
 
 const QuizResultDisplay = ({ quiz, attempt }) => {
-    if (!attempt || !quiz) {
-        return null;
-    }
+    if (!attempt || !quiz) return null;
 
-    // Calculate results from scratch
-    const calculateResults = () => {
-        console.log("Calculating quiz results with attempt:", attempt);
+    // Calculate score details
+    const totalQuestions = Number(attempt.totalQuestions) || quiz.questions?.length || 0;
+    const correctAnswers = Number(attempt.correctAnswers) || 0;
+    const incorrectAnswers = Number(attempt.incorrectAnswers) || 0;
+    const unattempted = Number(attempt.unattempted) || 0;
+    const scorePercent = Number(attempt.score) || 0;
+    const timeTaken = Number(attempt.timeTaken) || 0;
 
-        // Make a deep copy of the attempt to avoid mutation issues
-        const attemptCopy = JSON.parse(JSON.stringify(attempt));
-
-        // Log the MongoDB data format for debugging
-        console.log("MongoDB data format:", {
-            _id: attemptCopy._id,
-            quizId: attemptCopy.quizId,
-            userId: attemptCopy.userId,
-            answers: attemptCopy.answers,
-            score: attemptCopy.score,
-            totalQuestions: attemptCopy.totalQuestions,
-            correctAnswers: attemptCopy.correctAnswers,
-            incorrectAnswers: attemptCopy.incorrectAnswers,
-            unattempted: attemptCopy.unattempted,
-            timeTaken: attemptCopy.timeTaken
-        });
-
-        // Use attempt data directly if available and valid
-        if (attemptCopy.score !== undefined &&
-            attemptCopy.correctAnswers !== undefined &&
-            attemptCopy.incorrectAnswers !== undefined &&
-            attemptCopy.totalQuestions !== undefined) {
-
-            console.log("Using existing attempt data for results");
-
-            // Ensure all values are numbers
-            const result = {
-                correctAnswers: Number(attemptCopy.correctAnswers) || 0,
-                incorrectAnswers: Number(attemptCopy.incorrectAnswers) || 0,
-                totalQuestions: Number(attemptCopy.totalQuestions) || 0,
-                // If score is 1 and totalQuestions is 1, it means 100% score
-                score: attemptCopy.totalQuestions === 1 && attemptCopy.score === 1 ? 100 : Number(attemptCopy.score) || 0,
-                timeTaken: Number(attemptCopy.timeTaken) || 0
-            };
-
-            console.log("Processed result:", result);
-
-            // Validate the results - if any value is NaN or invalid, recalculate
-            if (isNaN(result.correctAnswers) ||
-                isNaN(result.incorrectAnswers) ||
-                isNaN(result.totalQuestions) ||
-                isNaN(result.score)) {
-                console.log("Invalid attempt data, recalculating");
-            } else {
-                // Store the valid result in localStorage for future reference
-                if (quiz?._id) {
-                    try {
-                        localStorage.setItem(`quiz_${quiz._id}_results`, JSON.stringify(result));
-                    } catch (e) {
-                        console.error("Failed to store quiz results in localStorage:", e);
-                    }
-                }
-                return result;
-            }
-        }
-
-        // Check if we have cached results in localStorage
-        if (quiz?._id) {
-            try {
-                const cachedResults = localStorage.getItem(`quiz_${quiz._id}_results`);
-                if (cachedResults) {
-                    const parsed = JSON.parse(cachedResults);
-                    console.log("Using cached results from localStorage:", parsed);
-                    return parsed;
-                }
-            } catch (e) {
-                console.error("Failed to retrieve cached quiz results:", e);
-            }
-        }
-
-        console.log("Calculating results from scratch");
-        let correctAnswers = 0;
-        let incorrectAnswers = 0;
-        let totalQuestions = quiz.questions?.length || 0;
-        let timeTaken = 0;
-
-        // Calculate correct and incorrect answers
-        if (attemptCopy.answers && Array.isArray(attemptCopy.answers)) {
-            console.log("Calculating from answers:", attemptCopy.answers);
-
-            attemptCopy.answers.forEach((answer) => {
-                // Get the question using the questionIndex from the answer
-                const question = quiz.questions?.[Number(answer.questionIndex)];
-
-                console.log(`Answer for question ${answer.questionIndex}:`, {
-                    selectedAnswer: answer.selectedAnswer,
-                    correctAnswer: question?.correctAnswer,
-                    questionFound: !!question
-                });
-
-                if (question && answer.selectedAnswer !== undefined && answer.selectedAnswer !== null) {
-                    // Convert both to numbers for comparison
-                    const selectedAnswer = Number(answer.selectedAnswer);
-                    const correctAnswer = Number(question.correctAnswer);
-
-                    if (selectedAnswer === correctAnswer) {
-                        console.log(`Question ${answer.questionIndex}: CORRECT (${selectedAnswer} === ${correctAnswer})`);
-                        correctAnswers++;
-                    } else if (selectedAnswer !== -1) { // -1 means unattempted
-                        console.log(`Question ${answer.questionIndex}: INCORRECT (${selectedAnswer} !== ${correctAnswer})`);
-                        incorrectAnswers++;
-                    } else {
-                        console.log(`Question ${answer.questionIndex}: UNATTEMPTED (${selectedAnswer})`);
-                    }
-                } else {
-                    console.log(`Question ${answer.questionIndex}: INVALID (question not found or answer undefined)`);
-                }
-            });
-        }
-
-        // Calculate score percentage
-        let score = 0;
-        if (totalQuestions > 0) {
-            // If MongoDB format has score as 1 for 100%, handle that case
-            if (totalQuestions === 1 && correctAnswers === 1) {
-                score = 100;
-            } else {
-                score = Math.round((correctAnswers / totalQuestions) * 100);
-            }
-        }
-
-        console.log("Calculated score:", {
-            correctAnswers,
-            totalQuestions,
-            score
-        });
-
-        // Calculate time taken in minutes
-        if (attemptCopy.timeTaken !== undefined && attemptCopy.timeTaken !== null) {
-            timeTaken = Number(attemptCopy.timeTaken) || 0;
-        }
-
-        return {
-            correctAnswers,
-            incorrectAnswers,
-            totalQuestions,
-            score,
-            timeTaken
-        };
+    // Determine trophy icon and text based on score
+    const getPerformanceStatus = (score) => {
+        if (score >= 90) return { icon: <Trophy className="w-10 h-10 text-yellow-500" />, label: "Outstanding Performance!", desc: "You've fully mastered this lecture's concepts." };
+        if (score >= 70) return { icon: <Award className="w-10 h-10 text-blue-400" />, label: "Great Job!", desc: "You have a solid understanding of the material." };
+        return { icon: <AlertCircle className="w-10 h-10 text-[#E8602E]" />, label: "Keep Learning!", desc: "We recommend reviewing the lecture and trying again." };
     };
-
-    // DIRECT FIX: Use the MongoDB data directly if available
-    let results;
-
-    // If we have valid MongoDB data with correctAnswers and incorrectAnswers, use it directly
-    if (attempt &&
-        typeof attempt.correctAnswers === 'number' &&
-        typeof attempt.incorrectAnswers === 'number' &&
-        typeof attempt.totalQuestions === 'number') {
-
-        console.log("DIRECT FIX: Using MongoDB data directly");
-
-        results = {
-            correctAnswers: Number(attempt.correctAnswers),
-            incorrectAnswers: Number(attempt.incorrectAnswers),
-            totalQuestions: Number(attempt.totalQuestions),
-            score: attempt.totalQuestions === 1 && attempt.correctAnswers === 1 ? 100 : Number(attempt.score) || 0,
-            timeTaken: Number(attempt.timeTaken) || 0
-        };
-
-        console.log("DIRECT FIX: Results:", results);
-    } else {
-        // Fall back to calculated results if MongoDB data is not available
-        results = calculateResults();
-    }
+    const status = getPerformanceStatus(scorePercent);
 
     return (
-        <div className="space-y-4">
-            {/* Quiz Header */}
-            <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow dark:bg-gray-800">
-                <div className="flex items-center gap-2">
-                    <span className="font-semibold">Questions:</span>
-                    <span>{results.totalQuestions}</span>
+        <div className="space-y-6 text-white">
+
+            {/* Performance Header Summary */}
+            <div className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.05] flex flex-col md:flex-row items-center gap-6 shadow-xl relative overflow-hidden">
+                {/* Accent glows */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8602E]/5 rounded-full blur-[80px] pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/3 rounded-full blur-[60px] pointer-events-none" />
+
+                {/* Circular Score Gauge */}
+                <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+                    <svg className="w-full h-full transform -rotate-90">
+                        <circle cx="56" cy="56" r="48" className="stroke-white/[0.04] fill-none" strokeWidth="8" />
+                        <circle 
+                            cx="56" cy="56" r="48" 
+                            className="stroke-[#E8602E] fill-none transition-all duration-1000 ease-out" 
+                            strokeWidth="8" 
+                            strokeDasharray={301.6} 
+                            strokeDashoffset={301.6 - (301.6 * scorePercent) / 100}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                    <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-2xl font-black">{scorePercent}%</span>
+                        <span className="text-[10px] text-[#444] font-bold uppercase tracking-wider">Score</span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="font-semibold">Score:</span>
-                    <span>{results.correctAnswers}/{results.totalQuestions}</span>
+
+                <div className="text-center md:text-left space-y-1.5 flex-1">
+                    <div className="flex items-center justify-center md:justify-start gap-2.5">
+                        {status.icon}
+                        <h2 className="text-xl font-black leading-none">{status.label}</h2>
+                    </div>
+                    <p className="text-sm text-[#888] leading-relaxed max-w-md">
+                        {status.desc}
+                    </p>
                 </div>
             </div>
 
-            {/* Quiz Results */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-xl font-bold">Quiz Results</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Correct Answers */}
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/30">
-                        <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                            <span className="font-medium">Correct Answers</span>
+            {/* Metrics cards grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: "Questions", value: totalQuestions, icon: <HelpCircleIcon className="text-blue-400" /> },
+                    { label: "Correct", value: correctAnswers, icon: <CheckCircle2 className="text-green-500" /> },
+                    { label: "Incorrect", value: incorrectAnswers, icon: <XCircle className="text-red-500" /> },
+                    { label: "Time Taken", value: formatTimeTaken(timeTaken), icon: <Clock className="text-[#E8602E]" /> }
+                ].map((item, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-[#0a0a0a] border border-white/[0.05] flex items-center justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[10px] text-[#444] font-bold uppercase tracking-wider">{item.label}</p>
+                            <p className="text-lg font-black">{item.value}</p>
                         </div>
-                        <span className="text-xl font-bold">{results.correctAnswers}</span>
+                        <span className="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center justify-center">
+                            {item.icon}
+                        </span>
                     </div>
+                ))}
+            </div>
 
-                    {/* Incorrect Answers */}
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/30">
-                        <div className="flex items-center gap-2">
-                            <XCircle className="w-5 h-5 text-red-600" />
-                            <span className="font-medium">Incorrect Answers</span>
-                        </div>
-                        <span className="text-xl font-bold">{results.incorrectAnswers}</span>
-                    </div>
+            {/* Question Review Sheet */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                    <h3 className="text-base font-black text-white tracking-tight">Question Analysis</h3>
+                    <span className="text-xs text-[#555] font-semibold">Review mode</span>
+                </div>
 
-                    {/* Score */}
-                    <div className="p-4 text-center rounded-lg bg-blue-50 dark:bg-blue-900/30">
-                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Your Score</p>
-                        <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
-                            {results.totalQuestions === 1 && results.correctAnswers === 1 ? "100%" : `${results.score}%`}
-                        </p>
-                        <p className="mt-1 text-sm text-blue-600 dark:text-blue-400">
-                            {results.correctAnswers} out of {results.totalQuestions} questions correct
-                        </p>
-                    </div>
+                <div className="space-y-4">
+                    {quiz.questions?.map((question, qIdx) => {
+                        // Find the student's answer record
+                        let studentAns = attempt.answers?.find(a => Number(a.questionIndex) === qIdx) 
+                            || attempt.answers?.[qIdx];
 
-                    {/* Time Taken */}
-                    <div className="text-sm text-center text-gray-600 dark:text-gray-400">
-                        Time taken: {results.timeTaken < 0.1 ?
-                            "less than 5 seconds" :
-                            results.timeTaken < 1 ?
-                                `${Math.round(results.timeTaken * 60)} seconds` :
-                                `${results.timeTaken.toFixed(2)} minutes`}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Question Review */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-xl font-bold">Question Review</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {quiz.questions?.map((question, index) => {
-                        // DIRECT FIX: Find the answer for this question by questionIndex
-                        // First try to find by exact questionIndex match
-                        let answer = attempt.answers?.find(a => Number(a.questionIndex) === index);
-
-                        // If not found and we only have one answer (for one question), use it
-                        if (!answer && attempt.answers?.length === 1 && quiz.questions.length === 1) {
-                            answer = attempt.answers[0];
-                        }
-
-                        // If still not found, try array index as fallback
-                        if (!answer) {
-                            answer = attempt.answers?.[index];
-                        }
-
-                        console.log(`DIRECT FIX: Question ${index + 1}:`, {
-                            question: question.question,
-                            correctAnswer: question.correctAnswer,
-                            selectedAnswer: answer?.selectedAnswer,
-                            questionIndex: index,
-                            answerFound: !!answer,
-                            allAnswers: attempt.answers
-                        });
-
-                        // DIRECT FIX: For single question quizzes with correctAnswers=1,
-                        // we know the answer was correct
-                        let isCorrect = false;
-                        if (quiz.questions.length === 1 &&
-                            attempt.correctAnswers === 1 &&
-                            attempt.totalQuestions === 1) {
-                            isCorrect = true;
-                            console.log("DIRECT FIX: Single question quiz with correct answer");
-                        } else {
-                            // Otherwise check if the answer is correct - ensure we're comparing numbers
-                            isCorrect = answer && Number(answer.selectedAnswer) === Number(question.correctAnswer);
-                        }
-
-                        const isAnswered = answer && answer.selectedAnswer !== undefined && answer.selectedAnswer !== null;
+                        const selectedIndex = studentAns ? Number(studentAns.selectedAnswer) : -1;
+                        const correctIndex = Number(question.correctAnswer);
+                        const isCorrect = selectedIndex === correctIndex;
+                        const isUnattempted = selectedIndex === -1;
 
                         return (
-                            <div key={index} className="p-4 border rounded-lg">
-                                <p className="mb-3 font-medium">Q{index + 1}. {question.question}</p>
-                                <div className="space-y-2">
-                                    {question.options?.map((option, optionIndex) => {
-                                        // DIRECT FIX: Handle option selection for single question quizzes
-                                        let isSelected = false;
+                            <div 
+                                key={qIdx} 
+                                className={`p-5 rounded-2xl border transition-all duration-200 bg-[#0a0a0a] ${
+                                    isUnattempted 
+                                        ? 'border-white/[0.05]' 
+                                        : isCorrect 
+                                        ? 'border-green-500/10 shadow-lg shadow-green-500/2' 
+                                        : 'border-red-500/10 shadow-lg shadow-red-500/2'
+                                }`}
+                            >
+                                {/* Question Title block */}
+                                <div className="flex items-start justify-between gap-4 mb-4">
+                                    <p className="text-sm font-bold text-white leading-relaxed">
+                                        Q{qIdx + 1}. {question.question}
+                                    </p>
+                                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0 ${
+                                        isUnattempted 
+                                            ? 'bg-white/[0.04] border border-white/[0.06] text-[#666]' 
+                                            : isCorrect 
+                                            ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
+                                            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                    }`}>
+                                        {isUnattempted ? "Skipped" : isCorrect ? "Correct" : "Incorrect"}
+                                    </span>
+                                </div>
 
-                                        // For single question quizzes with correctAnswers=1,
-                                        // mark the correct option as selected
-                                        if (quiz.questions.length === 1 &&
-                                            attempt.correctAnswers === 1 &&
-                                            attempt.totalQuestions === 1 &&
-                                            Number(optionIndex) === Number(question.correctAnswer)) {
-                                            isSelected = true;
-                                            console.log(`DIRECT FIX: Marking option ${optionIndex} as selected for single correct question`);
-                                        } else {
-                                            // Otherwise check if this option was selected
-                                            isSelected = answer && Number(answer.selectedAnswer) === Number(optionIndex);
-                                        }
-
-                                        const isCorrectOption = Number(optionIndex) === Number(question.correctAnswer);
+                                {/* Options grid */}
+                                <div className="space-y-2.5 pl-1">
+                                    {question.options?.map((option, oIdx) => {
+                                        const isSelectedOption = selectedIndex === oIdx;
+                                        const isCorrectOption = correctIndex === oIdx;
 
                                         return (
                                             <div
-                                                key={optionIndex}
-                                                className={`p-2 rounded ${
-                                                    isSelected && isCorrect
-                                                        ? 'bg-green-100 dark:bg-green-900/50'
-                                                        : isSelected && !isCorrect
-                                                        ? 'bg-red-100 dark:bg-red-900/50'
-                                                        : isCorrectOption
-                                                        ? 'bg-green-50 dark:bg-green-900/30'
-                                                        : ''
+                                                key={oIdx}
+                                                className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all duration-200 ${
+                                                    isCorrectOption
+                                                        ? 'bg-green-500/5 border-green-500/20 text-green-400 shadow-md shadow-green-500/1'
+                                                        : isSelectedOption && !isCorrect
+                                                        ? 'bg-red-500/5 border-red-500/20 text-red-400'
+                                                        : 'bg-[#111] border-white/[0.03] text-[#555]'
                                                 }`}
                                             >
-                                                <div className="flex items-center gap-2">
-                                                    <span>{option}</span>
-                                                    {isSelected && isCorrect && (
-                                                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                <span>{option}</span>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    {isCorrectOption && (
+                                                        <span className="text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/15 px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
+                                                            <CheckCircle2 className="w-3 h-3" /> Correct Answer
+                                                        </span>
                                                     )}
-                                                    {isSelected && !isCorrect && (
-                                                        <XCircle className="w-4 h-4 text-red-600" />
-                                                    )}
-                                                    {!isSelected && isCorrectOption && (
-                                                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                    {isSelectedOption && !isCorrect && (
+                                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/15 px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1">
+                                                            <XCircle className="w-3 h-3" /> Your Selection
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
@@ -337,10 +162,30 @@ const QuizResultDisplay = ({ quiz, attempt }) => {
                             </div>
                         );
                     })}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
+
         </div>
     );
 };
+
+/* ─── Helpers ─── */
+const HelpCircleIcon = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+);
+
+function formatTimeTaken(minutes) {
+    if (minutes <= 0) return "0s";
+    if (minutes < 0.1) return "less than 5s";
+    if (minutes < 1) return `${Math.round(minutes * 60)}s`;
+    
+    const mins = Math.floor(minutes);
+    const secs = Math.round((minutes - mins) * 60);
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
 
 export default QuizResultDisplay;

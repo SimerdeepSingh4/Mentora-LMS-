@@ -3,7 +3,7 @@ import {
   useLoginUserMutation,
   useRegisterUserMutation,
 } from "@/features/api/authApi";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,21 +13,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import LoginGif from "../assets/study.gif";
 
 const Login = () => {
+  const [searchParams] = useSearchParams();
   const [signupInput, setSignupInput] = useState({
     name: "",
     email: "",
     password: "",
   });
   const [loginInput, setLoginInput] = useState({ email: "", password: "" });
-  const [isLoadingScreenVisible, setIsLoadingScreenVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "login");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "login" || tabParam === "signup") {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const [registerUser, { data: registerData, error: registerError, isLoading: registerIsLoading, isSuccess: registerIsSuccess }] = useRegisterUserMutation();
   const [loginUser, { data: loginData, error: loginError, isLoading: loginIsLoading, isSuccess: loginIsSuccess }] = useLoginUserMutation();
@@ -81,7 +89,7 @@ const Login = () => {
 
         {/* Form Section */}
         <div className="flex items-center justify-center w-full p-6 md:w-1/2">
-          <Tabs defaultValue="login" className="w-full max-w-[350px]">
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setShowPassword(false); }} className="w-full max-w-[350px]">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signup">Signup</TabsTrigger>
               <TabsTrigger value="login">Login</TabsTrigger>
@@ -97,21 +105,45 @@ const Login = () => {
                 <CardContent className="space-y-2">
                   <div className="space-y-1">
                     <Label htmlFor="name">Name</Label>
-                    <Input type="text" name="name" value={signupInput.name} onChange={(e) => changeInputHandler(e, "signup")} placeholder="Eg. XYZ" required />
+                    <div className="relative group">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                      <input type="text" name="name" value={signupInput.name} onChange={(e) => changeInputHandler(e, "signup")} placeholder="Eg. XYZ"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="email">Email</Label>
-                    <Input type="email" name="email" value={signupInput.email} onChange={(e) => changeInputHandler(e, "signup")} placeholder="Eg. xyz@gmail.com" required />
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                      <input type="email" name="email" value={signupInput.email} onChange={(e) => changeInputHandler(e, "signup")} placeholder="Eg. xyz@gmail.com"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="password">Password</Label>
-                    <Input type="password" name="password" value={signupInput.password} onChange={(e) => changeInputHandler(e, "signup")} placeholder="Eg. xyz@123" required />
+                    <div className="relative group">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                      <input type={showPassword ? "text" : "password"} name="password" value={signupInput.password} onChange={(e) => changeInputHandler(e, "signup")} placeholder="Eg. xyz@123"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-9 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button disabled={registerIsLoading} onClick={() => handleRegistration("signup")}>
-                    {registerIsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Signup"}
+                <CardFooter className="flex flex-col items-start gap-3">
+                  <Button disabled={registerIsLoading} onClick={() => handleRegistration("signup")} className="w-full group">
+                    {registerIsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : (
+                      <>Signup <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-0.5" /></>
+                    )}
                   </Button>
+                  <p className="text-xs text-muted-foreground w-full text-center">
+                    Already have an account?{" "}
+                    <button onClick={() => setActiveTab("login")} className="text-primary font-semibold hover:underline underline-offset-2">Login</button>
+                  </p>
                 </CardFooter>
               </Card>
             </TabsContent>
@@ -126,17 +158,36 @@ const Login = () => {
                 <CardContent className="space-y-2">
                   <div className="space-y-1">
                     <Label htmlFor="email">Email</Label>
-                    <Input type="email" name="email" value={loginInput.email} onChange={(e) => changeInputHandler(e, "login")} placeholder="Eg. xyz@gmail.com" required />
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                      <input type="email" name="email" value={loginInput.email} onChange={(e) => changeInputHandler(e, "login")} placeholder="Eg. xyz@gmail.com"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="password">Password</Label>
-                    <Input type="password" name="password" value={loginInput.password} onChange={(e) => changeInputHandler(e, "login")} placeholder="Eg. xyz@123" required />
+                    <div className="relative group">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+                      <input type={showPassword ? "text" : "password"} name="password" value={loginInput.password} onChange={(e) => changeInputHandler(e, "login")} placeholder="Eg. xyz@123"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-9 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button disabled={loginIsLoading} onClick={() => handleRegistration("login")}>
-                    {loginIsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Login"}
+                <CardFooter className="flex flex-col items-start gap-3">
+                  <Button disabled={loginIsLoading} onClick={() => handleRegistration("login")} className="w-full group">
+                    {loginIsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : (
+                      <>Login <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-0.5" /></>
+                    )}
                   </Button>
+                  <p className="text-xs text-muted-foreground w-full text-center">
+                    Don&apos;t have an account?{" "}
+                    <button onClick={() => setActiveTab("signup")} className="text-primary font-semibold hover:underline underline-offset-2">Sign up free</button>
+                  </p>
                 </CardFooter>
               </Card>
             </TabsContent>

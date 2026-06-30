@@ -1,7 +1,10 @@
 import Quiz from "../models/quiz.model.js";
 import QuizAttempt from "../models/quizAttempt.model.js";
 import { Lecture } from "../models/lecture.model.js";
+import { Course } from "../models/course.model.js";
 import mongoose from "mongoose";
+import { updateUserGamification } from "../utils/gamification.js";
+import { recordActivity } from "../utils/activityLogger.js";
 
 export const createQuiz = async (req, res) => {
   try {
@@ -13,6 +16,22 @@ export const createQuiz = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Lecture not found",
+      });
+    }
+
+    // Check if course exists and user is the creator
+    const course = await Course.findById(lecture.course);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found for this lecture",
+      });
+    }
+
+    if (course.creator.toString() !== req.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to create a quiz for this course",
       });
     }
 
@@ -251,6 +270,10 @@ export const submitQuiz = async (req, res) => {
 
     await quizAttempt.save();
 
+    // Trigger gamification updates
+    const reward = await updateUserGamification(userId, "QUIZ_SUBMIT", { score });
+    await recordActivity(userId, "QUIZ_SUBMIT", { quizId, score });
+
     return res.status(201).json({
       success: true,
       message: "Quiz submitted successfully",
@@ -261,7 +284,8 @@ export const submitQuiz = async (req, res) => {
         incorrectAnswers,
         unattempted,
         timeTaken
-      }
+      },
+      reward
     });
 
   } catch (error) {
@@ -327,3 +351,33 @@ export const getQuizAttempts = async (req, res) => {
     });
   }
 };
+
+export const resetQuizAttempt = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const userId = req.id;
+
+    // Validate quizId
+    if (!quizId || !mongoose.Types.ObjectId.isValid(quizId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid quiz ID"
+      });
+    }
+
+    // Delete attempts for this quiz and user
+    await QuizAttempt.deleteMany({ quizId, userId });
+
+    return res.status(200).json({
+      success: true,
+      message: "Quiz attempts reset successfully"
+    });
+
+  } catch (error) {
+    console.error("Reset quiz attempts error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to reset quiz attempts"
+    });
+  }
+};

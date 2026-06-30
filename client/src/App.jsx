@@ -16,10 +16,13 @@ import CreateLecture from "./pages/instructor/lecture/CreateLecture";
 import EditLecture from "./pages/instructor/lecture/EditLecture";
 import ApplyInstructor from "./pages/student/ApplyInstructor";
 import CourseDetail from "./pages/student/CourseDetail";
-import SearchPage from "./pages/student/SearchPage";
 import CourseProgress from "./pages/student/courseProgress";
+import Leaderboard from "./pages/student/Leaderboard";
 import { ThemeProvider } from "./components/ThemeProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PrivacyPolicy from "./pages/student/PrivacyPolicy";
+import TermsOfService from "./pages/student/TermsOfService";
+import ContactSupport from "./pages/student/ContactSupport";
 
 // Admin components
 import AdminSidebar from "./pages/admin/Sidebar";
@@ -37,9 +40,25 @@ const appRouter = createBrowserRouter([
         element: (
           <>
             <HeroSection />
-            <Courses />
+            <Courses limit={3} />
           </>
         ),
+      },
+      {
+        path: "courses",
+        element: <Courses />
+      },
+      {
+        path: "privacy",
+        element: <PrivacyPolicy />
+      },
+      {
+        path: "terms",
+        element: <TermsOfService />
+      },
+      {
+        path: "contact",
+        element: <ContactSupport />
       },
       {
         path: "login",
@@ -54,6 +73,10 @@ const appRouter = createBrowserRouter([
         element: <ProtectedRoute><Profile /></ProtectedRoute>
       },
       {
+        path: "leaderboard",
+        element: <ProtectedRoute requiredRole="student"><Leaderboard /></ProtectedRoute>
+      },
+      {
         path: "course-detail/:courseId",
         element: (
           <CourseDetail />
@@ -63,14 +86,7 @@ const appRouter = createBrowserRouter([
         path: "become-instructor",
         element: <ProtectedRoute requiredRole="student"><ApplyInstructor /></ProtectedRoute>
       },
-      {
-        path: "course/search",
-        element: (
 
-          <SearchPage />
-
-        ),
-      },
 
       {
         path: "course-progress/:courseId",

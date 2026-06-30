@@ -1,6 +1,24 @@
 import express from "express";
 import isAuthenticated from "../middlewares/isAuthenticated.js";
-import { createCourse, createLecture, deleteCourse, editCourse, editLecture, getCourseById, getCourseLecture, getCreatorCourses, getInstructorDashboardStats, getLectureById, getPublishedCourse, removeLecture, searchCourse, togglePublishCourse } from "../controllers/course.controller.js";
+import { 
+    createCourse, 
+    createLecture, 
+    deleteCourse, 
+    editCourse, 
+    editLecture, 
+    getCourseById, 
+    getCourseLecture, 
+    getCreatorCourses, 
+    getInstructorDashboardStats, 
+    getLectureById, 
+    getPublishedCourse, 
+    removeLecture, 
+    searchCourse, 
+    togglePublishCourse,
+    createAnnouncement,
+    getAnnouncements,
+    deleteAnnouncement
+} from "../controllers/course.controller.js";
 import upload from "../utils/multer.js";
 const router = express.Router();
 
@@ -11,6 +29,7 @@ router.route("/search").get(searchCourse);
 // Protected routes
 router.route("/").post(isAuthenticated, upload.single("courseThumbnail"), createCourse);
 router.route("/").get(isAuthenticated, getCreatorCourses);
+router.route("/instructor/stats").get(isAuthenticated, getInstructorDashboardStats);
 router.route("/:courseId").delete(isAuthenticated, deleteCourse);
 router.route("/:courseId").put(isAuthenticated, upload.single("courseThumbnail"), editCourse);
 router.route("/:courseId").get(isAuthenticated, getCourseById);
@@ -20,6 +39,10 @@ router.route("/:courseId/lecture/:lectureId").post(isAuthenticated, editLecture)
 router.route("/lecture/:lectureId").delete(isAuthenticated, removeLecture);
 router.route("/lecture/:lectureId").get(isAuthenticated, getLectureById);
 router.route("/:courseId").patch(isAuthenticated, togglePublishCourse);
-router.route("/instructor/stats").get(isAuthenticated, getInstructorDashboardStats);
+
+// Announcement routes
+router.route("/:courseId/announcement").post(isAuthenticated, createAnnouncement);
+router.route("/:courseId/announcement").get(isAuthenticated, getAnnouncements);
+router.route("/:courseId/announcement/:announcementId").delete(isAuthenticated, deleteAnnouncement);
 
 export default router;

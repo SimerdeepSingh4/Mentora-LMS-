@@ -13,8 +13,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useQuizTimer } from '@/hooks/useQuizTimer';
-import { useQuizAttempt } from '@/hooks/useQuizAttempt';
 import { toast } from "sonner";
+import { Clock, HelpCircle, ArrowRight, ArrowLeft, Send, CheckCircle2 } from "lucide-react";
 
 export const QuizUI = ({
     quiz,
@@ -22,24 +22,25 @@ export const QuizUI = ({
     isQuizSubmitted,
     onQuizSubmit,
     onCloseQuiz,
-    timeLeft
+    timeLeft,
+    quizAnswers = {},
+    updateAnswer,
+    clearAnswers
 }) => {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [showCloseDialog, setShowCloseDialog] = useState(false);
+    
     const { formatTime } = useQuizTimer(
         quiz.timeLimit,
         isQuizStarted,
         isQuizSubmitted,
         () => onQuizSubmit(quiz._id, timeLeft, quiz.timeLimit)
     );
-    const { quizAnswers, updateAnswer, clearAnswers } = useQuizAttempt(quiz._id);
 
-    // Warn before unload and handle quiz state
+    // Warn before unload
     useEffect(() => {
-        // Check if this quiz has been attempted before
         const hasAttempted = localStorage.getItem(`quiz_${quiz._id}_attempted`) === 'true';
 
-        // If the quiz is marked as submitted in props but not in localStorage, update localStorage
         if (isQuizSubmitted && !hasAttempted && quiz._id) {
             localStorage.setItem(`quiz_${quiz._id}_attempted`, 'true');
         }
@@ -56,13 +57,6 @@ export const QuizUI = ({
     }, [isQuizStarted, isQuizSubmitted, quiz._id]);
 
     const handleAnswerSelect = (questionIndex, selectedAnswer) => {
-        console.log(`handleAnswerSelect called for question ${questionIndex}:`, {
-            selectedAnswer,
-            parsedAnswer: parseInt(selectedAnswer),
-            type: typeof selectedAnswer
-        });
-
-        // Ensure we're passing a number to updateAnswer
         updateAnswer(questionIndex, parseInt(selectedAnswer));
     };
 
@@ -72,54 +66,31 @@ export const QuizUI = ({
             return;
         }
 
-        // ⭐⭐ CRITICAL FIX: Log the current state of answers before submission
-        console.log("Quiz answers before submission:", quizAnswers);
-        console.log("Quiz questions:", quiz.questions);
-
-        // Count answered questions
         const answeredCount = Object.keys(quizAnswers).length;
         const totalQuestions = quiz.questions.length;
 
-        // If no questions are answered, show a warning and ask for confirmation
         if (answeredCount === 0) {
             const confirmed = window.confirm(
-                "You haven't answered any questions. Are you sure you want to submit the quiz? All questions will be marked as unanswered."
+                "You haven't answered any questions. Are you sure you want to submit the quiz?"
             );
             if (!confirmed) return;
-        }
-        // Warn if many questions are unanswered but some are answered
-        else if (answeredCount < totalQuestions / 2) {
+        } else if (answeredCount < totalQuestions) {
             const confirmed = window.confirm(
-                `You've only answered ${answeredCount} out of ${totalQuestions} questions. Are you sure you want to submit?`
+                `You've only answered ${answeredCount} out of ${totalQuestions} questions. Submit anyway?`
             );
             if (!confirmed) return;
         }
 
-        // Show loading toast
-        const loadingToast = toast.loading("Submitting quiz...");
+        const loadingToast = toast.loading("Submitting your answers...");
 
         try {
-            // ⭐⭐ CRITICAL FIX: Make sure we're passing the quiz object with questions
-            // This ensures the submission process has access to all questions
-            console.log("Submitting quiz with ID:", quiz._id);
-            console.log("Time left:", timeLeft);
-            console.log("Time limit:", quiz.timeLimit);
-
-            // Pass the quiz object to ensure we have access to all questions
             const success = await onQuizSubmit(quiz._id, timeLeft, quiz.timeLimit, quiz);
-
-            // Dismiss loading toast
             toast.dismiss(loadingToast);
 
             if (success) {
-                // Success toast is shown in the onQuizSubmit function
-                console.log("Quiz submitted successfully");
-            } else {
-                console.error("Quiz submission failed");
-                toast.error("Failed to submit quiz. Please try again.");
+                toast.success("Quiz submitted successfully!");
             }
         } catch (error) {
-            // Dismiss loading toast and show error
             toast.dismiss(loadingToast);
             console.error("Quiz submission error:", error);
             toast.error("Failed to submit quiz: " + (error.message || "Unknown error"));
@@ -127,140 +98,221 @@ export const QuizUI = ({
     };
 
     const handleClose = () => {
-        // If quiz is in progress (started but not submitted), show confirmation dialog
         if (isQuizStarted && !isQuizSubmitted) {
             setShowCloseDialog(true);
             return;
         }
 
-        // If quiz is submitted, just close without clearing answers
         if (isQuizSubmitted) {
-            if (onCloseQuiz) {
-                onCloseQuiz();
-            }
+            if (onCloseQuiz) onCloseQuiz();
             return;
         }
 
-        // Otherwise, clear answers and close
         clearAnswers();
-        if (onCloseQuiz) {
-            onCloseQuiz();
-        }
+        if (onCloseQuiz) onCloseQuiz();
     };
 
     const confirmClose = () => {
         clearAnswers();
         setShowCloseDialog(false);
-        if (onCloseQuiz) {
-            onCloseQuiz();
-        }
+        if (onCloseQuiz) onCloseQuiz();
     };
 
-    const progress = (Object.keys(quizAnswers).length / quiz.questions.length) * 100;
-
-    if (!quiz || !quiz.questions) {
-        return <div>No quiz available</div>;
+    if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 bg-[#0a0a0a] rounded-2xl border border-white/[0.05]">
+                <HelpCircle className="w-8 h-8 text-[#555] mb-2" />
+                <p className="text-sm text-[#888]">No quiz details available for this lecture.</p>
+            </div>
+        );
     }
 
+    const totalQuestions = quiz.questions.length;
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    const answeredCount = Object.keys(quizAnswers).length;
+    const progressPercent = (answeredCount / totalQuestions) * 100;
+    
+    // Check if current question is answered
+    const currentSelectedValue = quizAnswers[currentQuestionIndex] !== undefined 
+        ? quizAnswers[currentQuestionIndex].toString() 
+        : undefined;
+
+    // Check if time is running out (less than 1 minute)
+    const isTimeUrgent = timeLeft < 60;
+
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-bold">Quiz Questions</h2>
-                    {isQuizStarted && !isQuizSubmitted && (
-                        <Badge variant="outline" className="px-4 py-2 text-red-600">
-                            Time Left: {formatTime(timeLeft)}
-                        </Badge>
-                    )}
-                    {isQuizSubmitted && (
-                        <Badge variant="outline" className="px-4 py-2 text-green-600 bg-green-50">
-                            Quiz is already attempted - View Only Mode
-                        </Badge>
-                    )}
+        <div className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.05] shadow-xl text-white space-y-6">
+            
+            {/* Header: Title & Close Button */}
+            <div className="flex items-center justify-between border-b border-white/[0.05] pb-4">
+                <div className="space-y-1">
+                    <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                        <HelpCircle className="w-5 h-5 text-[#E8602E]" />
+                        Lecture Quiz
+                    </h3>
+                    <p className="text-xs text-[#555] font-medium uppercase tracking-wider">
+                        {quiz.questions.length} Questions • {quiz.timeLimit} Minutes
+                    </p>
                 </div>
-                <Button variant="outline" onClick={handleClose}>
-                    {isQuizSubmitted ? "Back to Results" : "Close Quiz"}
-                </Button>
+
+                <div className="flex items-center gap-3">
+                    {isQuizStarted && !isQuizSubmitted && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all duration-300 ${
+                            isTimeUrgent 
+                                ? 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse' 
+                                : 'bg-[#E8602E]/5 border-[#E8602E]/20 text-[#E8602E]'
+                        }`}>
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Time Remaining: {formatTime(timeLeft)}</span>
+                        </div>
+                    )}
+                    <Button 
+                        variant="outline" 
+                        onClick={handleClose}
+                        className="text-xs border-white/[0.05] bg-transparent text-[#888] hover:text-white hover:bg-white/[0.05] h-8 rounded-lg"
+                    >
+                        {isQuizSubmitted ? "Back to Results" : "Close"}
+                    </Button>
+                </div>
             </div>
 
+            {/* Quiz Info Status for View Mode */}
             {isQuizSubmitted && (
-                <div className="p-4 my-4 text-center border-2 border-yellow-200 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 dark:border-yellow-800">
-                    <p className="text-yellow-800 dark:text-yellow-300">
-                        You have already attempted this quiz. This is a view-only mode and you cannot change your answers.
-                    </p>
+                <div className="p-3.5 rounded-xl border border-green-500/20 bg-green-500/5 text-xs text-green-400 flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                        <span className="font-bold">Review Mode:</span> You have completed this quiz. You can review your selected options below.
+                    </div>
                 </div>
             )}
 
-            <div className="space-y-8">
-                {quiz.questions.map((question, qIndex) => (
-                    <div key={qIndex} className="p-6 border rounded-lg">
-                        <p className="mb-4 text-lg font-medium">
-                            Q{qIndex + 1}. {question.question}
-                        </p>
-                        <RadioGroup
-                            value={quizAnswers[qIndex] !== undefined ? quizAnswers[qIndex].toString() : undefined}
-                            onValueChange={(value) => {
-                                console.log(`Selected answer for question ${qIndex}:`, {
-                                    value,
-                                    parsedValue: parseInt(value),
-                                    type: typeof value
-                                });
-                                handleAnswerSelect(qIndex, value);
-                            }}
-                            className="space-y-3"
-                            disabled={isQuizSubmitted} // Disable inputs if quiz is submitted
-                        >
-                            {question.options.map((option, oIndex) => (
-                                <div key={oIndex} className="flex items-center space-x-2">
-                                    <RadioGroupItem
-                                        value={oIndex.toString()}
-                                        id={`q${qIndex}-o${oIndex}`}
-                                        disabled={isQuizSubmitted} // Disable each radio button if quiz is submitted
-                                    />
-                                    <Label
-                                        htmlFor={`q${qIndex}-o${oIndex}`}
-                                        className={isQuizSubmitted ? "text-muted-foreground" : ""}
-                                    >
-                                        {option}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    </div>
-                ))}
+            {/* Progress Gauge */}
+            <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-[#555] uppercase tracking-wider">
+                    <span>Quiz Progress</span>
+                    <span className="text-[#E8602E]">{answeredCount} of {totalQuestions} Answered</span>
+                </div>
+                <Progress value={progressPercent} className="h-1.5 bg-[#141414]" indicatorColor="bg-[#E8602E]" />
             </div>
 
-            <div className="flex items-center justify-between">
-                <Progress value={progress} className="w-full" />
-                {isQuizSubmitted ? (
-                    <Button disabled className="bg-gray-400 cursor-not-allowed">
-                        Already Attempted
+            {/* Question Screen */}
+            <div className="p-5 rounded-2xl bg-[#0c0c0c] border border-white/[0.05] space-y-5">
+                {/* Question index tracker */}
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#E8602E] uppercase tracking-widest bg-[#E8602E]/8 border border-[#E8602E]/20 px-2.5 py-0.5 rounded-full">
+                        Question {currentQuestionIndex + 1} of {totalQuestions}
+                    </span>
+                </div>
+
+                {/* The Question Text */}
+                <p className="text-base font-bold leading-relaxed text-white">
+                    {currentQuestion.question}
+                </p>
+
+                {/* Option Choices */}
+                <RadioGroup
+                    value={currentSelectedValue}
+                    onValueChange={(val) => handleAnswerSelect(currentQuestionIndex, val)}
+                    className="space-y-3"
+                    disabled={isQuizSubmitted}
+                >
+                    {currentQuestion.options?.map((option, idx) => {
+                        const isSelected = currentSelectedValue === idx.toString();
+                        return (
+                            <div 
+                                key={idx}
+                                onClick={() => !isQuizSubmitted && handleAnswerSelect(currentQuestionIndex, idx)}
+                                className={`flex items-center gap-3 p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
+                                    isSelected 
+                                        ? 'bg-[#E8602E]/5 border-[#E8602E]/40 text-white shadow-lg shadow-[#E8602E]/3' 
+                                        : 'bg-[#111] border-white/[0.04] text-[#888] hover:border-white/[0.1] hover:text-white'
+                                } ${isQuizSubmitted ? 'cursor-default opacity-85' : ''}`}
+                            >
+                                <RadioGroupItem
+                                    value={idx.toString()}
+                                    id={`opt-${idx}`}
+                                    className={`shrink-0 border-white/20 text-[#E8602E] focus:ring-[#E8602E] ${
+                                        isSelected ? 'border-[#E8602E]' : ''
+                                    }`}
+                                    disabled={isQuizSubmitted}
+                                />
+                                <Label
+                                    htmlFor={`opt-${idx}`}
+                                    className="text-sm font-medium leading-none cursor-pointer flex-1 py-1"
+                                >
+                                    {option}
+                                </Label>
+                            </div>
+                        );
+                    })}
+                </RadioGroup>
+            </div>
+
+            {/* Navigation & Submit controls */}
+            <div className="flex items-center justify-between pt-2">
+                <Button
+                    onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+                    disabled={currentQuestionIndex === 0}
+                    variant="outline"
+                    className="border-white/[0.05] bg-transparent text-[#888] hover:text-white hover:bg-white/[0.05] disabled:opacity-30 rounded-xl"
+                >
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                </Button>
+
+                {currentQuestionIndex < totalQuestions - 1 ? (
+                    <Button
+                        onClick={() => setCurrentQuestionIndex(prev => Math.min(totalQuestions - 1, prev + 1))}
+                        className="bg-[#1a1a1a] hover:bg-[#252525] border border-white/[0.05] text-white rounded-xl"
+                    >
+                        Next Question <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                 ) : (
-                    <Button onClick={handleSubmit} disabled={isQuizSubmitted}>
-                        Submit Quiz
-                    </Button>
+                    !isQuizSubmitted ? (
+                        <Button
+                            onClick={handleSubmit}
+                            className="bg-[#E8602E] hover:bg-[#d4561f] text-white font-bold px-6 shadow-lg shadow-[#E8602E]/15 hover:shadow-[#E8602E]/25 rounded-xl transition-all"
+                        >
+                            <Send className="w-4 h-4 mr-2" /> Submit Quiz
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleClose}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 rounded-xl"
+                        >
+                            View Final Results
+                        </Button>
+                    )
                 )}
             </div>
 
+            {/* Exit/Close Dialog Modal */}
             <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-                <DialogContent>
+                <DialogContent className="bg-[#0c0c0c] border border-white/[0.08] text-white rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle>Close Quiz</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to close the quiz? Your progress will be lost.
+                        <DialogTitle className="font-black text-lg text-white">Leave Quiz?</DialogTitle>
+                        <DialogDescription className="text-sm text-[#666]">
+                            Your progress on this attempt will be reset. Are you sure you want to exit?
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
-                            Cancel
+                    <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setShowCloseDialog(false)}
+                            className="border-white/[0.05] bg-transparent text-[#888] hover:text-white hover:bg-white/[0.05] rounded-xl"
+                        >
+                            Resume Quiz
                         </Button>
-                        <Button variant="destructive" onClick={confirmClose}>
-                            Close Quiz
+                        <Button 
+                            variant="destructive" 
+                            onClick={confirmClose}
+                            className="bg-red-650 hover:bg-red-700 text-white rounded-xl"
+                        >
+                            Yes, Leave Quiz
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
         </div>
     );
 };

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, LogOut } from 'lucide-react'
+import { Loader2, LogOut, Award } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import Course from './Course'
 import { useLoadUserQuery, useUpdateUserMutation, useLogoutUserMutation } from '@/features/api/authApi'
@@ -27,6 +27,13 @@ const Profile = () => {
 
     const navigate = useNavigate();
     const user = userData?.user;
+
+    // Pre-populate name state when user data is loaded
+    useEffect(() => {
+        if (user?.name) {
+            setName(user.name);
+        }
+    }, [user]);
 
     const onChangeHandler = (e) => {
         const file = e.target.files?.[0];
@@ -130,6 +137,20 @@ const Profile = () => {
                             Role: <span className='ml-2 font-normal text-gray-700 dark:text-gray-300'>{user?.role?.toUpperCase() || "User"}</span>
                         </h2>
                     </div>
+                    {user?.role === "student" && (
+                        <div className="flex gap-3 my-3">
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-400 font-bold text-xs shadow-sm">
+                                <span>🧠</span>
+                                <span>{user.xp || 0} XP</span>
+                            </div>
+                            {user.streak > 0 && (
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-600 dark:text-amber-400 font-bold text-xs shadow-sm animate-pulse">
+                                    <span>🔥</span>
+                                    <span>{user.streak} Day Streak</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div className='flex gap-3 mt-3'>
                         <Dialog>
                             <DialogTrigger asChild>
@@ -219,6 +240,42 @@ const Profile = () => {
                     </div>
                 )}
             </div>
+
+            {/* Achievements Section */}
+            {user?.role === "student" && (
+                <div className="mt-8 pt-6 border-t border-border">
+                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">
+                        <Award className="w-5 h-5 text-indigo-500" />
+                        Achievements & Badges ({user.badges ? user.badges.length : 0})
+                    </h2>
+                    
+                    {!user.badges || user.badges.length === 0 ? (
+                        <div className="p-8 border border-dashed border-border rounded-xl text-center text-muted-foreground text-sm">
+                            <p>No achievements unlocked yet. Attend lectures and complete quizzes to earn badges!</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {user.badges.map((badge, idx) => (
+                                <div 
+                                    key={idx} 
+                                    className="flex items-start gap-3 p-4 rounded-xl border border-indigo-500/10 bg-indigo-550/5 dark:bg-gray-800/40 shadow-sm hover:scale-[1.02] transition-transform"
+                                >
+                                    <div className="text-3xl p-2 bg-indigo-500/10 rounded-lg shrink-0">
+                                        {badge.icon || "🏅"}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-sm text-foreground">{badge.title}</h4>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">{badge.description}</p>
+                                        <p className="text-[10px] text-indigo-400 font-medium pt-1">
+                                            Unlocked {new Date(badge.unlockedAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

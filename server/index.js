@@ -13,6 +13,9 @@ import quizRoute from "./routes/quiz.route.js";
 import instructorApplicationRoute from "./routes/instructorApplication.route.js";
 import adminRoute from "./routes/admin.route.js";
 import supabaseRoute from "./routes/supabase.route.js";
+import aiRoute from "./routes/ai.route.js";
+import leaderboardRoute from "./routes/leaderboard.route.js";
+import commentRoute from "./routes/comment.route.js";
 import { initializeSocket } from "./utils/socketManager.js";
 
 
@@ -49,6 +52,9 @@ app.use("/api/v1/quiz", quizRoute);
 app.use("/api/v1/instructor-applications", instructorApplicationRoute);
 app.use("/api/v1/admin", adminRoute);
 app.use("/api/v1/supabase", supabaseRoute);
+app.use("/api/v1/ai", aiRoute);
+app.use("/api/v1/leaderboard", leaderboardRoute);
+app.use("/api/v1/comment", commentRoute);
 
 
 server.listen(PORT, () => {

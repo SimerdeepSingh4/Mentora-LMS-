@@ -66,6 +66,12 @@ export const authApi = createApi({
                 body: formData,
                 credentials: "include"
             })
+        }),
+        getUserActivity: builder.query({
+            query: () => ({
+                url: "activity",
+                method: "GET"
+            })
         })
     })
 });
@@ -74,5 +80,6 @@ export const {
     useLoginUserMutation,
     useLogoutUserMutation,
     useLoadUserQuery,
-    useUpdateUserMutation
+    useUpdateUserMutation,
+    useGetUserActivityQuery
 } = authApi;

@@ -40,7 +40,14 @@ const courseSchema = new mongoose.Schema({
     isPublished: {
         type: Boolean,
         default: false
-    }
+    },
+    announcements: [
+        {
+            title: { type: String, required: true },
+            content: { type: String, required: true },
+            createdAt: { type: Date, default: Date.now }
+        }
+    ]
 
 }, { timestamps: true });
 // Virtual field for formatted course price

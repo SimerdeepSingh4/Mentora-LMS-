@@ -30,11 +30,12 @@ export const createCheckoutSession = async (req, res) => {
     });
 
     // Create a new course purchase record with completed status
+    // Create a new course purchase record with pending status
     const newPurchase = new CoursePurchase({
       courseId,
       userId,
       amount: course.coursePrice,
-      status: "completed", // Set status to completed immediately
+      status: "pending", // Set status to pending initially
     });
 
     console.log("Created new purchase record:", {
@@ -84,37 +85,6 @@ export const createCheckoutSession = async (req, res) => {
     newPurchase.paymentId = session.id;
     await newPurchase.save();
     console.log("Saved purchase record with payment ID:", newPurchase._id);
-
-    // Update user's enrolledCourses
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $addToSet: { enrolledCourses: courseId } },
-      { new: true }
-    );
-    console.log("User enrolled courses updated:", {
-      userId: updatedUser._id,
-      enrolledCourses: updatedUser.enrolledCourses
-    });
-
-    // Update course's enrolledStudents
-    const updatedCourse = await Course.findByIdAndUpdate(
-      courseId,
-      { $addToSet: { enrolledStudents: userId } },
-      { new: true }
-    );
-    console.log("Course enrolled students updated:", {
-      courseId: updatedCourse._id,
-      enrolledStudents: updatedCourse.enrolledStudents
-    });
-
-    // Make all lectures visible
-    if (course.lectures && course.lectures.length > 0) {
-      await Lecture.updateMany(
-        { _id: { $in: course.lectures } },
-        { $set: { isPreviewFree: true } }
-      );
-      console.log("Updated lectures to be visible");
-    }
 
     return res.status(200).json({
       success: true,
@@ -193,15 +163,6 @@ export const stripeWebhook = async (req, res) => {
       }
       purchase.status = "completed";
 
-      // Make all lectures visible
-      if (purchase.courseId && purchase.courseId.lectures.length > 0) {
-        await Lecture.updateMany(
-          { _id: { $in: purchase.courseId.lectures } },
-          { $set: { isPreviewFree: true } }
-        );
-        console.log("Updated lectures to be visible");
-      }
-
       // Save the updated purchase
       await purchase.save();
       console.log("Purchase updated:", purchase._id);
@@ -272,11 +233,76 @@ export const getCourseDetailWithPurchaseStatus = async (req, res) => {
       User.findById(userId)
     ]);
 
-    console.log("Purchase status:", {
-      exists: !!purchase,
-      status: purchase?.status,
-      isEnrolled: user?.enrolledCourses?.includes(courseId)
-    });
+    // Check if course creator is an admin
+    const isCourseCreatedByAdmin = course.creator?.role === "admin";
+    const userRole = user?.role || "student";
+    if (isCourseCreatedByAdmin && userRole !== "instructor" && userRole !== "admin") {
+      return res.status(403).json({
+        message: "This course is restricted to instructors only.",
+        success: false
+      });
+    }
+
+    const isCreator = course.creator._id.toString() === userId || course.creator.toString() === userId;
+    const isAdmin = user?.role === "admin";
+    const isInstructor = user?.role === "instructor";
+
+    let isPurchased = false;
+    if (isAdmin) {
+      isPurchased = true;
+    } else if (isInstructor) {
+      isPurchased = isCreator;
+    } else {
+      isPurchased = purchase?.status === "completed" || user?.enrolledCourses?.includes(courseId);
+    }
+
+    if (!isPurchased && !isCreator && purchase && purchase.status === "pending" && purchase.paymentId) {
+      try {
+        console.log("Checking Stripe checkout session status from getCourseDetail:", purchase.paymentId);
+        const session = await stripe.checkout.sessions.retrieve(purchase.paymentId);
+        if (session && session.payment_status === "paid") {
+          console.log("Stripe payment verified in getCourseDetail! Completing purchase and enrolling student.");
+          purchase.status = "completed";
+          if (session.amount_total) {
+            purchase.amount = session.amount_total / 100;
+          }
+          await purchase.save();
+
+          // Enroll user
+          await User.findByIdAndUpdate(
+            userId,
+            { $addToSet: { enrolledCourses: courseId } }
+          );
+          await Course.findByIdAndUpdate(
+            courseId,
+            { $addToSet: { enrolledStudents: userId } }
+          );
+          isPurchased = true;
+        }
+      } catch (stripeError) {
+        console.error("Failed to verify Stripe payment in getCourseDetailWithPurchaseStatus:", stripeError);
+      }
+    }
+
+    let responseCourse = course.toObject();
+
+    // If not purchased and not the creator, scrub paid content
+    if (!isPurchased && !isCreator) {
+      if (responseCourse.lectures && responseCourse.lectures.length > 0) {
+        responseCourse.lectures = responseCourse.lectures.map(lecture => {
+          if (!lecture.isPreviewFree) {
+            // Scrub details for paid lectures
+            return {
+              _id: lecture._id,
+              lectureTitle: lecture.lectureTitle,
+              course: lecture.course,
+              isPreviewFree: false
+            };
+          }
+          return lecture;
+        });
+      }
+    }
 
     // If there's a completed purchase but the course isn't in enrolledCourses, add it
     if (purchase?.status === "completed" && !user.enrolledCourses.includes(courseId)) {
@@ -286,18 +312,13 @@ export const getCourseDetailWithPurchaseStatus = async (req, res) => {
         { $addToSet: { enrolledCourses: courseId } }
       );
       return res.status(200).json({
-        course,
+        course: responseCourse,
         purchased: true
       });
     }
 
-    // Course is considered purchased if either:
-    // 1. There's a completed purchase record, or
-    // 2. The course is in the user's enrolledCourses array
-    const isPurchased = purchase?.status === "completed" || user?.enrolledCourses?.includes(courseId);
-
     return res.status(200).json({
-      course,
+      course: responseCourse,
       purchased: isPurchased
     });
   } catch (error) {

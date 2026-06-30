@@ -38,6 +38,27 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    xp: {
+      type: Number,
+      default: 0,
+    },
+    streak: {
+      type: Number,
+      default: 0,
+    },
+    lastActiveDate: {
+      type: Date,
+      default: null,
+    },
+    badges: [
+      {
+        badgeId: { type: String, required: true },
+        title: { type: String, required: true },
+        description: { type: String, required: true },
+        icon: { type: String, required: true },
+        unlockedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

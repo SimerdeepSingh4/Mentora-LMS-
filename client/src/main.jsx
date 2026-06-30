@@ -7,7 +7,7 @@ import { appStore } from "./app/store";
 import { Toaster } from "@/components/ui/sonner";
 import { useLoadUserQuery } from "./features/api/authApi";
 import LoadingScreen from "./components/LoadingScreen";
-import logoDark from "./assets/logo_light.png"; // Your logo path
+import logoDark from "./assets/logo_dark.png"; // Light text logo for dark bg
 
 
 const Custom = ({ children }) => {

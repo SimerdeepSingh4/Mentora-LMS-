@@ -116,6 +116,15 @@ export const quizApi = createApi({
         return response;
       }
     }),
+    resetQuizAttempt: builder.mutation({
+      query: (quizId) => {
+        const cleanQuizId = quizId?.split(':')[0];
+        return {
+          url: `/${cleanQuizId}/reset`,
+          method: "DELETE",
+        };
+      }
+    }),
   }),
 });
 
@@ -124,4 +133,5 @@ export const {
   useGetQuizQuery,
   useSubmitQuizMutation,
   useGetQuizAttemptsQuery,
+  useResetQuizAttemptMutation,
 } = quizApi;

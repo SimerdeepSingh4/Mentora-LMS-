@@ -6,6 +6,9 @@ import { courseProgressApi } from "@/features/api/courseProgressApi";
 import { quizApi } from "@/features/api/quizApi";
 import { adminApi } from "@/features/api/adminApi";
 import { instructorApplicationApi } from "@/features/api/instructorApplicationApi";
+import { aiApi } from "@/features/api/aiApi";
+import { leaderboardApi } from "@/features/api/leaderboardApi";
+import { commentApi } from "@/features/api/commentApi";
 import authReducer from "@/features/authSlice";
 
 
@@ -19,6 +22,9 @@ export const appStore = configureStore({
         [quizApi.reducerPath]: quizApi.reducer,
         [adminApi.reducerPath]: adminApi.reducer,
         [instructorApplicationApi.reducerPath]: instructorApplicationApi.reducer,
+        [aiApi.reducerPath]: aiApi.reducer,
+        [leaderboardApi.reducerPath]: leaderboardApi.reducer,
+        [commentApi.reducerPath]: commentApi.reducer,
     },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(
         authApi.middleware,
@@ -27,7 +33,10 @@ export const appStore = configureStore({
         courseProgressApi.middleware,
         quizApi.middleware,
         adminApi.middleware,
-        instructorApplicationApi.middleware
+        instructorApplicationApi.middleware,
+        aiApi.middleware,
+        leaderboardApi.middleware,
+        commentApi.middleware
     )
 });
 

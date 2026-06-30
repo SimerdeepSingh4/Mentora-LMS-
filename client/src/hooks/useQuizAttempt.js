@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useSubmitQuizMutation, useGetQuizAttemptsQuery } from '@/features/api/quizApi';
+import { useSubmitQuizMutation, useGetQuizAttemptsQuery, useResetQuizAttemptMutation } from '@/features/api/quizApi';
 import { toast } from 'sonner';
+import { showGamificationToast } from '@/utils/gamification';
+import { useDispatch } from 'react-redux';
+import { userRewardsUpdated } from '@/features/authSlice';
 
 export const useQuizAttempt = (quizId) => {
-    // ⭐⭐ CRITICAL FIX: We'll need to pass the quiz object when calling handleQuizSubmit
+    const dispatch = useDispatch();
     const [quizAnswers, setQuizAnswers] = useState({});
     const [submitQuiz] = useSubmitQuizMutation();
+    const [resetQuiz] = useResetQuizAttemptMutation();
 
     const { data: attemptsData, refetch: refetchAttempts } = useGetQuizAttemptsQuery(quizId, {
         skip: !quizId,
@@ -184,6 +188,11 @@ export const useQuizAttempt = (quizId) => {
             const score = result.data?.data?.score || 0;
             toast.success(`Quiz submitted successfully! Score: ${score}%`);
 
+            if (result.data?.reward) {
+                showGamificationToast(result.data.reward);
+                dispatch(userRewardsUpdated(result.data.reward));
+            }
+
             return true;
         } catch (error) {
             console.error("Quiz submission error:", error);
@@ -221,6 +230,29 @@ export const useQuizAttempt = (quizId) => {
         localStorage.removeItem('quizAnswers');
     };
 
+    const resetAttempt = async () => {
+        if (!quizId) return false;
+        try {
+            const cleanQuizId = quizId.toString().split(':')[0].trim();
+            const res = await resetQuiz(cleanQuizId).unwrap();
+            
+            // Clear local storage records
+            localStorage.removeItem(`quiz_${cleanQuizId}_attempted`);
+            localStorage.removeItem(`quiz_${cleanQuizId}_attempt_data`);
+            localStorage.removeItem(`quiz_${cleanQuizId}_results`);
+            localStorage.removeItem(`quiz_${cleanQuizId}_attempt`);
+            
+            clearAnswers();
+            await refetchAttempts();
+            toast.success("Quiz reset successfully! You can take it again.");
+            return true;
+        } catch (error) {
+            console.error("Failed to reset quiz attempt:", error);
+            toast.error(error.data?.message || "Failed to reset quiz");
+            return false;
+        }
+    };
+
     // Get the latest attempt with proper formatting
     const latestAttempt = attemptsData?.data?.[0] || null;
 
@@ -229,6 +261,7 @@ export const useQuizAttempt = (quizId) => {
         updateAnswer,
         clearAnswers,
         handleQuizSubmit,
+        resetAttempt,
         latestAttempt,
         refetchAttempts
     };

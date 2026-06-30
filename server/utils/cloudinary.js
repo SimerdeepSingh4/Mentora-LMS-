@@ -13,27 +13,30 @@ cloudinary.config({
 
 export const uploadMedia = async (file, originalName, socketId = null, uploadId = null) => {
     try {
-        // Get the file extension from either the original name or the file path
-        let fileExtension;
-        if (originalName) {
-            fileExtension = originalName.split('.').pop().toLowerCase();
-        } else {
-            // Extract extension from file path
-            const fileName = file.split('/').pop();
-            fileExtension = fileName.split('.').pop().toLowerCase();
+        // Get the file extension from either the original name or the file path, handling both UNIX and Windows path separators
+        let fileExtension = "";
+        const sourceName = originalName || file;
+        if (sourceName) {
+            const normalized = sourceName.replace(/\\/g, '/');
+            const fileName = normalized.split('/').pop();
+            if (fileName && fileName.includes('.')) {
+                fileExtension = fileName.split('.').pop().toLowerCase();
+            }
         }
 
         let resourceType = "auto";
 
         // Determine resource type based on file extension
-        if (['pdf', 'doc', 'docx'].includes(fileExtension)) {
-            resourceType = "raw";
-        } else if (['ppt', 'pptx'].includes(fileExtension)) {
-            resourceType = "raw";
-        } else if (['mp4', 'mov', 'avi', 'webm'].includes(fileExtension)) {
-            resourceType = "video";
-        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
-            resourceType = "image";
+        if (fileExtension) {
+            if (['pdf', 'doc', 'docx'].includes(fileExtension)) {
+                resourceType = "raw";
+            } else if (['ppt', 'pptx'].includes(fileExtension)) {
+                resourceType = "raw";
+            } else if (['mp4', 'mov', 'avi', 'webm'].includes(fileExtension)) {
+                resourceType = "video";
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+                resourceType = "image";
+            }
         }
 
         // Clean up the file path to use forward slashes
@@ -58,11 +61,14 @@ export const uploadMedia = async (file, originalName, socketId = null, uploadId 
         const uploadOptions = {
             resource_type: resourceType,
             chunk_size: 10000000, // Increased to 10MB chunks
-            format: fileExtension,
             access_mode: "public",
             timeout: 120000, // Increased timeout to 2 minutes
             eager: false // Disable eager transformations for faster uploads
         };
+
+        if (fileExtension) {
+            uploadOptions.format = fileExtension;
+        }
 
         // For videos, add additional options
         if (resourceType === "video") {

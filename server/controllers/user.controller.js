@@ -2,6 +2,7 @@ import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
 import { deleteMediaFromCloudinary, uploadMedia } from "../utils/cloudinary.js";
+import { recordActivity } from "../utils/activityLogger.js";
 
 export const register = async (req, res) => {
   try {
@@ -92,6 +93,7 @@ export const login = async (req, res) => {
       });
     }
 
+    await recordActivity(user._id, "LOGIN");
     generateToken(res, user, `Welcome back ${user.name}`);
   } catch (error) {
     console.log(error);
@@ -144,44 +146,97 @@ export const getUserProfile =async(req,res)=>{
   }
 }
 
-export const updateProfile =async(req,res)=>{
-  try{
-    const userId= req.id;
-    const {name} =req.body;
-    const profilePhoto=req.file;
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.id;
+    const { name } = req.body;
+    const profilePhoto = req.file;
 
-    const user= await User.findById(userId);
-    if(!user){
+    const user = await User.findById(userId);
+    if (!user) {
       return res.status(404).json({
-        success:false,
-        message:"User not found"
-      })
+        success: false,
+        message: "User not found"
+      });
     }
-    // extract public id of the old image from the url is it exists;
-    if(user.photoUrl){
-      const publicId=user.photoUrl.split("/").pop().split(".")[0]; //extracting public ID
-      deleteMediaFromCloudinary(publicId);
+
+    let photoUrl = user.photoUrl;
+
+    if (profilePhoto) {
+      // extract public id of the old image from the url if it exists;
+      if (user.photoUrl && typeof user.photoUrl === 'string') {
+        try {
+          const publicId = user.photoUrl.split("/").pop().split(".")[0];
+          if (publicId) {
+            await deleteMediaFromCloudinary(publicId);
+          }
+        } catch (err) {
+          console.error("Error deleting old profile photo:", err);
+        }
+      }
+
+      // upload new photo
+      const cloudResponse = await uploadMedia(profilePhoto.path, profilePhoto.originalname);
+      photoUrl = cloudResponse.secure_url;
     }
-    //upload new photo
-    const cloudResponse=await uploadMedia(profilePhoto.path);
 
-    const {secure_url:photoUrl}=cloudResponse;
+    const updatedData = {
+      name: name || user.name,
+      photoUrl
+    };
 
-    const updatedData={name, photoUrl}
-    const updatedUser=await User.findByIdAndUpdate(userId,updatedData,{new:true}).select("-password");
+    const updatedUser = await User.findByIdAndUpdate(userId, updatedData, { new: true }).select("-password");
 
     return res.status(200).json({
-      user:updatedUser,
-      success:true,
-      message:"Profile updated successfully",
-    })
-
-
-  } catch(error){
+      user: updatedUser,
+      success: true,
+      message: "Profile updated successfully",
+    });
+  } catch (error) {
     console.log(error);
     return res.status(500).json({
-      success:false,
-      message:"Failed to update profile"
-    })
+      success: false,
+      message: "Failed to update profile"
+    });
   }
 }
+
+export const getUserActivity = async (req, res) => {
+  try {
+    const userId = req.id;
+    const { ActivityLog } = await import("../models/activityLog.model.js");
+    const mongoose = (await import("mongoose")).default;
+
+    // Fetch activities for the last 140 days (20 weeks)
+    const minDate = new Date(Date.now() - 140 * 24 * 60 * 60 * 1000);
+
+    const activities = await ActivityLog.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          timestamp: { $gte: minDate }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: activities
+    });
+  } catch (error) {
+    console.error("Get user activity error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load activity log"
+    });
+  }
+};

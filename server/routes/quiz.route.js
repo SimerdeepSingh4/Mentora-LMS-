@@ -4,6 +4,7 @@ import {
     getQuiz,
     submitQuiz,
     getQuizAttempts,
+    resetQuizAttempt,
 } from "../controllers/quiz.controller.js";
 import isAuthenticated from "../middlewares/isAuthenticated.js";
 
@@ -13,5 +14,6 @@ router.post("/create", isAuthenticated, createQuiz);
 router.get("/:quizId", isAuthenticated, getQuiz);
 router.post("/:quizId/submit", isAuthenticated, submitQuiz);
 router.get("/:quizId/attempts", isAuthenticated, getQuizAttempts);
+router.delete("/:quizId/reset", isAuthenticated, resetQuizAttempt);
 
 export default router;

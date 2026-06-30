@@ -25,10 +25,23 @@ const authSlice=createSlice({
             localStorage.removeItem('userId');
             // Invalidate dashboard cache when user logs out
             invalidateDashboardCache();
+        },
+        userRewardsUpdated:(state, action)=>{
+            if (state.user) {
+                if (action.payload.newStreak !== undefined && action.payload.newStreak > 0) {
+                    state.user.streak = action.payload.newStreak;
+                }
+                if (action.payload.newXp !== undefined && action.payload.newXp > 0) {
+                    state.user.xp = action.payload.newXp;
+                }
+                if (action.payload.newlyUnlockedBadges && action.payload.newlyUnlockedBadges.length > 0) {
+                    state.user.badges = [...(state.user.badges || []), ...action.payload.newlyUnlockedBadges];
+                }
+            }
         }
     },
 });
 
-export const {userLoggedIn, userLoggedOut}=authSlice.actions;
+export const {userLoggedIn, userLoggedOut, userRewardsUpdated}=authSlice.actions;
 
 export default authSlice.reducer;

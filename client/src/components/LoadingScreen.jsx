@@ -20,12 +20,13 @@ const LoadingScreen = ({ logoSrc }) => {
   return (
     <div style={styles.loadWrapper}>
       <div style={styles.spinContainer}>
+        {/* Glowing Orange Spinner Rings */}
         <div
           style={{
             ...styles.spin,
             width: spinnerSize.width + 60,
             height: spinnerSize.height + 60,
-            borderColor: "#0a3255 transparent",
+            borderColor: "#E8602E transparent",
           }}
         ></div>
         <div
@@ -33,7 +34,7 @@ const LoadingScreen = ({ logoSrc }) => {
             ...styles.spin,
             width: spinnerSize.width + 80,
             height: spinnerSize.height + 80,
-            borderColor: "#cf202f transparent",
+            borderColor: "rgba(232, 96, 46, 0.45) transparent",
             animation: "rotate2 2s cubic-bezier(0.26, 1.36, 0.74, -0.29) infinite",
           }}
         ></div>
@@ -42,7 +43,7 @@ const LoadingScreen = ({ logoSrc }) => {
             ...styles.spin,
             width: spinnerSize.width + 100,
             height: spinnerSize.height + 100,
-            borderColor: "#69be28 transparent",
+            borderColor: "rgba(255, 255, 255, 0.05) transparent",
           }}
         ></div>
         <div
@@ -50,7 +51,7 @@ const LoadingScreen = ({ logoSrc }) => {
             ...styles.spin,
             width: spinnerSize.width + 120,
             height: spinnerSize.height + 120,
-            borderColor: "#008aab transparent",
+            borderColor: "rgba(232, 96, 46, 0.75) transparent",
             animation: "rotate2 2s cubic-bezier(0.26, 1.36, 0.74, -0.29) infinite",
           }}
         ></div>
@@ -78,7 +79,7 @@ const styles = {
     position: "fixed",
     top: 0,
     left: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#060606", // Dark background matching website theme
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -91,7 +92,7 @@ const styles = {
     textAlign: "center",
   },
   spin: {
-    border: "3px solid #0a3255",
+    border: "3px solid #E8602E", // Burnt orange theme base
     position: "absolute",
     borderRadius: "50%",
     borderLeftColor: "transparent",
@@ -100,14 +101,23 @@ const styles = {
   },
 };
 
-const styleSheet = document.styleSheets[0];
-styleSheet.insertRule(
-  `@keyframes rotate { 0% { transform: rotateZ(-360deg); } 100% { transform: rotateZ(0deg); } }`,
-  styleSheet.cssRules.length
-);
-styleSheet.insertRule(
-  `@keyframes rotate2 { 0% { transform: rotateZ(360deg); } 100% { transform: rotateZ(0deg); } }`,
-  styleSheet.cssRules.length
-);
+// Inject keyframes safely
+if (typeof document !== "undefined") {
+  const styleSheet = document.styleSheets[0] || document.head.appendChild(document.createElement("style")).sheet;
+  if (styleSheet) {
+    try {
+      styleSheet.insertRule(
+        `@keyframes rotate { 0% { transform: rotateZ(-360deg); } 100% { transform: rotateZ(0deg); } }`,
+        styleSheet.cssRules.length
+      );
+      styleSheet.insertRule(
+        `@keyframes rotate2 { 0% { transform: rotateZ(360deg); } 100% { transform: rotateZ(0deg); } }`,
+        styleSheet.cssRules.length
+      );
+    } catch (e) {
+      console.warn("Failed to inject keyframes rules", e);
+    }
+  }
+}
 
 export default LoadingScreen;
