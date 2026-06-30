@@ -12,7 +12,6 @@ import {
 import { GlowCard } from "@/components/ui/GlowCard";
 import { StaggerTestimonials } from "@/components/ui/stagger-testimonials";
 import Lottie from "lottie-react";
-import educationAnimation from "../../../public/education.json";
 
 /* ─── Physics-Based Magnetic Component ─── */
 const Magnetic = ({ children, className = "" }) => {
@@ -139,12 +138,20 @@ const HeroSection = () => {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const lottieRef = useRef(null);
+  const [animationData, setAnimationData] = useState(null);
+
+  useEffect(() => {
+    fetch("/education.json")
+      .then((res) => res.json())
+      .then((data) => setAnimationData(data))
+      .catch((err) => console.error("Error loading lottie animation:", err));
+  }, []);
 
   useEffect(() => {
     if (lottieRef.current) {
       lottieRef.current.setSpeed(0.5); // Half speed for a gentler, more premium look
     }
-  }, []);
+  }, [animationData]);
 
   const [statsRef, statsVisible] = useIntersection(0.1);
   const activeStudentsCount = useCounter(500,  statsVisible, 2000);
@@ -295,7 +302,7 @@ const HeroSection = () => {
               
               {/* Central Lottie Animation */}
               <div className="w-[420px] h-[420px] z-10 select-none pointer-events-none drop-shadow-[0_0_50px_rgba(232,96,46,0.12)]">
-                <Lottie lottieRef={lottieRef} animationData={educationAnimation} loop={true} />
+                {animationData && <Lottie lottieRef={lottieRef} animationData={animationData} loop={true} />}
               </div>
 
               {/* Floating XP card */}

@@ -18,9 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Lottie from "lottie-react";
-import guyTypingAnimation from "../../public/guy-typing.json";
 
 const Login = () => {
+  const [animationData, setAnimationData] = useState(null);
   const [searchParams] = useSearchParams();
   const [signupInput, setSignupInput] = useState({
     name: "",
@@ -30,6 +30,13 @@ const Login = () => {
   const [loginInput, setLoginInput] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "login");
+
+  useEffect(() => {
+    fetch("/guy-typing.json")
+      .then((res) => res.json())
+      .then((data) => setAnimationData(data))
+      .catch((err) => console.error("Error loading lottie animation:", err));
+  }, []);
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
@@ -86,7 +93,7 @@ const Login = () => {
         {/* Lottie Animation Section */}
         <div className="items-center justify-center hidden w-1/2 p-6 md:flex">
           <div className="w-full max-w-[600px] h-auto">
-            <Lottie animationData={guyTypingAnimation} loop={true} />
+            {animationData && <Lottie animationData={animationData} loop={true} />}
           </div>
         </div>
 
