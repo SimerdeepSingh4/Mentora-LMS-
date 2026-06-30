@@ -4,7 +4,7 @@ export const courseApi = createApi({
     reducerPath: "courseApi",
     tagTypes: ["Refetch_Creator_Course", "Refetch_Lecture", "Refetch_Dashboard", "Refetch_Announcement"],
     baseQuery: fetchBaseQuery({
-        baseUrl: `${import.meta.env.VITE_SERVER_URL}/api/v1/course`,
+        baseUrl: "/api/v1/course",
         credentials: "include",
         prepareHeaders: (headers) => {
             headers.set('Accept', 'application/json');
