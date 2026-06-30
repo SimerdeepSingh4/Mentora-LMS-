@@ -176,7 +176,7 @@ export const Sandbox = () => {
         };
 
         try {
-          const evalResult = eval(code);
+          const evalResult = window.eval(code);
           console.log = originalLog;
           
           const finalOutput = logs.length > 0 ? logs : ["Code executed successfully (no console output)."];

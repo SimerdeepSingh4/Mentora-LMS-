@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { GlowCard } from "@/components/ui/GlowCard";
 import { StaggerTestimonials } from "@/components/ui/stagger-testimonials";
+import Lottie from "lottie-react";
+import educationAnimation from "../../../public/education.json";
 
 /* ─── Physics-Based Magnetic Component ─── */
 const Magnetic = ({ children, className = "" }) => {
@@ -136,6 +138,13 @@ const TESTIMONIALS = [
 const HeroSection = () => {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const lottieRef = useRef(null);
+
+  useEffect(() => {
+    if (lottieRef.current) {
+      lottieRef.current.setSpeed(0.5); // Half speed for a gentler, more premium look
+    }
+  }, []);
 
   const [statsRef, statsVisible] = useIntersection(0.1);
   const activeStudentsCount = useCounter(500,  statsVisible, 2000);
@@ -281,50 +290,17 @@ const HeroSection = () => {
               </div>
             </div>
 
-            {/* ── Right: glass card stack ── */}
+            {/* ── Right: Lottie Focal + Glass Float Stack ── */}
             <div className="relative hidden lg:flex items-center justify-center h-[520px]">
-
-              {/* Main progress card */}
-              <div
-                className="absolute z-10 w-[300px] left-[10%] top-[8%] animate-fade-up"
-                style={{ animationDelay: "300ms" }}
-              >
-                <GlowCard className="animate-float rounded-2xl w-full">
-                  <div className="bg-[#0f0f0f]/80 backdrop-blur-xl border border-white/[0.07] rounded-2xl p-5 shadow-2xl shadow-black/60">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-[10px] text-[#555] font-semibold uppercase tracking-wider mb-0.5">Now Learning</p>
-                        <p className="text-sm font-bold text-white leading-tight">Full-Stack React Dev</p>
-                      </div>
-                      <div className="w-9 h-9 rounded-xl bg-[#E8602E]/10 flex items-center justify-center border border-[#E8602E]/15">
-                        <Code className="w-4 h-4 text-[#E8602E]" />
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <div className="flex justify-between text-[11px] text-[#555] mb-1.5">
-                        <span>Progress</span><span className="text-[#E8602E] font-bold">68%</span>
-                      </div>
-                      <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                        <div className="h-full w-[68%] bg-gradient-to-r from-[#E8602E] to-[#f0845a] rounded-full" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {["React Hooks Deep Dive", "State Management", "API Integration"].map((l, i) => (
-                        <div key={i} className="flex items-center gap-2.5 p-2 bg-[#141414] rounded-lg">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i < 2 ? "bg-green-500/10" : "bg-[#222]"}`}>
-                            {i < 2 ? <CheckCircle className="w-3 h-3 text-green-500" /> : <Play className="w-2.5 h-2.5 text-[#555]" />}
-                          </div>
-                          <span className={`text-[11px] font-medium ${i < 2 ? "text-[#444] line-through" : "text-[#ccc]"}`}>{l}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </GlowCard>
+              
+              {/* Central Lottie Animation */}
+              <div className="w-[420px] h-[420px] z-10 select-none pointer-events-none drop-shadow-[0_0_50px_rgba(232,96,46,0.12)]">
+                <Lottie lottieRef={lottieRef} animationData={educationAnimation} loop={true} />
               </div>
 
-              {/* XP card */}
+              {/* Floating XP card */}
               <div
-                className="absolute z-20 right-[4%] top-[30%] w-[175px] animate-fade-up"
+                className="absolute z-20 right-[4%] top-[12%] w-[170px] animate-fade-up"
                 style={{ animationDelay: "450ms" }}
               >
                 <GlowCard className="animate-float-delay rounded-2xl w-full">
@@ -341,9 +317,9 @@ const HeroSection = () => {
                 </GlowCard>
               </div>
 
-              {/* Streak badge */}
+              {/* Floating Streak badge */}
               <div
-                className="absolute z-20 left-[0%] bottom-[18%] animate-fade-up"
+                className="absolute z-20 left-[2%] bottom-[16%] animate-fade-up"
                 style={{ animationDelay: "600ms" }}
               >
                 <GlowCard className="animate-float-slow rounded-2xl w-full">
@@ -359,7 +335,7 @@ const HeroSection = () => {
                 </GlowCard>
               </div>
 
-              {/* Leaderboard card */}
+              {/* Floating Leaderboard card */}
               <div
                 className="absolute z-20 right-[2%] bottom-[10%] w-[180px] animate-fade-up"
                 style={{ animationDelay: "750ms" }}
@@ -383,8 +359,8 @@ const HeroSection = () => {
                 </GlowCard>
               </div>
 
-              {/* Ambient glow behind cards */}
-              <div className="absolute inset-0 bg-[#E8602E]/3 rounded-full blur-[100px]" />
+              {/* Ambient glow behind elements */}
+              <div className="absolute inset-0 bg-[#E8602E]/4 rounded-full blur-[110px]" />
             </div>
           </div>
         </div>
@@ -698,7 +674,7 @@ const HeroSection = () => {
 
         {/* Background glows */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#E8602E]/[0.05] blur-[150px] animate-pulse duration-[8000ms]" />
+          <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#E8602E]/[0.05] blur-[150px] animate-pulse" style={{ animationDuration: '8000ms' }} />
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-blue-500/[0.03] blur-[120px]" />
           
           {/* Dynamic Grid Overlay */}

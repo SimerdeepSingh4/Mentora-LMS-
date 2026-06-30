@@ -74,7 +74,7 @@ const Footer = () => {
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         
         {/* Shifting Theme-Adaptive Aurora Glow */}
-        <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#E8602E]/[0.05] blur-[150px] animate-pulse duration-[8000ms]" />
+        <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#E8602E]/[0.05] blur-[150px] animate-pulse" style={{ animationDuration: '8000ms' }} />
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-blue-500/[0.03] blur-[120px]" />
         
         {/* Dynamic Grid Overlay */}

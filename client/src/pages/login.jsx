@@ -17,7 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import LoginGif from "../assets/study.gif";
+import Lottie from "lottie-react";
+import guyTypingAnimation from "../../public/guy-typing.json";
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -82,9 +83,11 @@ const Login = () => {
   return (
     <div className="flex items-center justify-center w-full min-h-screen p-4 bg-background">
       <div className="flex flex-col md:flex-row bg-card rounded-lg shadow-lg w-full max-w-[1200px] md:h-[500px] lg:h-[600px] md:w-[90%] lg:w-[80%]">
-        {/* GIF Section */}
+        {/* Lottie Animation Section */}
         <div className="items-center justify-center hidden w-1/2 p-6 md:flex">
-          <img src={LoginGif} alt="Login Illustration" className="w-full max-w-[700px] h-auto rounded-lg" />
+          <div className="w-full max-w-[600px] h-auto">
+            <Lottie animationData={guyTypingAnimation} loop={true} />
+          </div>
         </div>
 
         {/* Form Section */}
