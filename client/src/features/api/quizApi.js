@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const quizApi = createApi({
   reducerPath: "quizApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8080/api/v1/quiz",
+    baseUrl: "/api/v1/quiz",
     credentials: "include",
     prepareHeaders: (headers) => {
       // Get the user ID from localStorage or your auth state

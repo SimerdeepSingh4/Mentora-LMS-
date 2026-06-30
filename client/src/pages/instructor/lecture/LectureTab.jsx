@@ -13,7 +13,7 @@ import { useCreateQuizMutation, useGetQuizQuery } from "@/features/api/quizApi";
 import { useGenerateAIQuizMutation } from "@/features/api/aiApi";
 import { useSocket } from "@/hooks/useSocket";
 
-const MEDIA_API = "http://localhost:8080/api/v1/media";
+const MEDIA_API = "/api/v1/media";
 
 const LectureTab = () => {
   const [lectureTitle, setLectureTitle] = useState("");

@@ -11,7 +11,7 @@ export const useSocket = () => {
   useEffect(() => {
     // Initialize socket connection if not already connected
     if (!socket) {
-      socket = io('http://localhost:8080', {
+      socket = io('', {
         withCredentials: true,
         transports: ['websocket']
       });

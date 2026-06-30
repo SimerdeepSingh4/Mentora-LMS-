@@ -141,7 +141,7 @@ const ApplyInstructor = () => {
             const formData = new FormData();
             formData.append("file", file);
 
-            const response = await fetch("http://localhost:8080/api/v1/media/upload-material", {
+            const response = await fetch("/api/v1/media/upload-material", {
                 method: "POST",
                 body: formData,
                 credentials: "include"

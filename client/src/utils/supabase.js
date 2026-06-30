@@ -14,7 +14,7 @@ export const getSupabaseCredentials = async () => {
   try {
     console.log('Fetching Supabase credentials from server...');
 
-    const response = await fetch('http://localhost:8080/api/v1/supabase/credentials', {
+    const response = await fetch('/api/v1/supabase/credentials', {
       method: 'GET',
       credentials: 'include'
     });

@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const LEADERBOARD_API = "http://localhost:8080/api/v1/leaderboard";
+const LEADERBOARD_API = "/api/v1/leaderboard";
 
 export const leaderboardApi = createApi({
     reducerPath: "leaderboardApi",
