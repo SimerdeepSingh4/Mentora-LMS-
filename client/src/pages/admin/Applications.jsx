@@ -108,9 +108,9 @@ const Applications = () => {
   }
 
   return (
-    <div className="pt-10 space-y-6">
+    <div className="pt-10 space-y-6 relative text-white">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Instructor Applications</h1>
+        <h1 className="text-3xl font-black text-white">Instructor Applications</h1>
 
         {selectedTab === 'rejected' && (
           <div className="text-sm text-gray-500">
@@ -123,20 +123,20 @@ const Applications = () => {
       </div>
 
       <Tabs defaultValue="pending" value={selectedTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-8 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/[0.05] p-1.5 rounded-2xl h-auto">
+          <TabsTrigger value="pending" className="rounded-xl data-[state=active]:bg-[#E8602E] data-[state=active]:text-white font-bold py-2.5">Pending</TabsTrigger>
+          <TabsTrigger value="approved" className="rounded-xl data-[state=active]:bg-[#E8602E] data-[state=active]:text-white font-bold py-2.5">Approved</TabsTrigger>
+          <TabsTrigger value="rejected" className="rounded-xl data-[state=active]:bg-[#E8602E] data-[state=active]:text-white font-bold py-2.5">Rejected</TabsTrigger>
         </TabsList>
 
         <TabsContent value={selectedTab}>
-          <Card>
-            <CardHeader>
-              <CardTitle>
+          <Card className="bg-[#0a0a0a]/50 backdrop-blur-md border border-white/[0.05] overflow-hidden">
+            <CardHeader className="border-b border-white/[0.05] bg-white/[0.01]">
+              <CardTitle className="text-xl font-black">
                 {selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1)} Applications
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {isLoading ? (
                 <ApplicationsTableSkeleton />
               ) : (
@@ -181,35 +181,36 @@ const ApplicationsTable = ({ applications, onView, status, onReset, resettingId 
 
   return (
     <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Experience</TableHead>
-          <TableHead>Applied On</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
+      <TableHeader className="bg-white/[0.02]">
+        <TableRow className="border-b border-white/[0.05] hover:bg-transparent">
+          <TableHead className="font-bold text-[#888] h-12 uppercase tracking-wider text-[10px]">Name</TableHead>
+          <TableHead className="font-bold text-[#888] h-12 uppercase tracking-wider text-[10px]">Email</TableHead>
+          <TableHead className="font-bold text-[#888] h-12 uppercase tracking-wider text-[10px]">Experience</TableHead>
+          <TableHead className="font-bold text-[#888] h-12 uppercase tracking-wider text-[10px]">Applied On</TableHead>
+          <TableHead className="font-bold text-[#888] h-12 uppercase tracking-wider text-[10px]">Status</TableHead>
+          <TableHead className="text-right font-bold text-[#888] h-12 uppercase tracking-wider text-[10px]">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {applications.map((application) => (
-          <TableRow key={application._id}>
-            <TableCell className="font-medium">{application.user.name}</TableCell>
-            <TableCell>{application.user.email}</TableCell>
-            <TableCell>{application.experience} years</TableCell>
-            <TableCell>
+          <TableRow key={application._id} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors">
+            <TableCell className="font-bold text-white text-sm">{application.user.name}</TableCell>
+            <TableCell className="text-[#aaa] text-sm">{application.user.email}</TableCell>
+            <TableCell className="text-[#aaa] text-sm">{application.experience} years</TableCell>
+            <TableCell className="text-[#aaa] text-sm">
               {format(new Date(application.createdAt), 'MMM dd, yyyy')}
             </TableCell>
             <TableCell>
               <StatusBadge status={application.status} />
             </TableCell>
             <TableCell className="text-right">
-              <div className="flex justify-end gap-1">
+              <div className="flex justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => onView(application)}
                   title="View Details"
+                  className="text-[#888] hover:text-[#E8602E] hover:bg-[#E8602E]/10"
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
@@ -220,7 +221,7 @@ const ApplicationsTable = ({ applications, onView, status, onReset, resettingId 
                     size="icon"
                     onClick={() => onReset(application._id)}
                     title="Reset to Pending"
-                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                    className="text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
                     disabled={resettingId === application._id}
                   >
                     {resettingId === application._id ? (
@@ -244,14 +245,14 @@ const ApplicationsTable = ({ applications, onView, status, onReset, resettingId 
 
 const StatusBadge = ({ status }) => {
   const variants = {
-    pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-    approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+    pending: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    approved: "bg-green-500/10 text-green-400 border-green-500/20",
+    rejected: "bg-red-500/10 text-red-400 border-red-500/20"
   };
 
   return (
-    <Badge className={variants[status]}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+    <Badge className={`${variants[status]} border font-bold uppercase tracking-wider text-[9px] px-2.5 py-0.5`}>
+      {status}
     </Badge>
   );
 };
@@ -267,85 +268,85 @@ const ApplicationDetailsDialog = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw]">
-        <DialogHeader className="sticky top-0 z-10 pb-2 bg-white dark:bg-gray-950">
-          <DialogTitle className="text-xl">Application Details</DialogTitle>
-          <DialogDescription>
-            Review the instructor application from {application.user.name}
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] bg-[#0a0a0a] border-white/[0.05] text-white">
+        <DialogHeader className="sticky top-0 z-10 pb-4 bg-[#0a0a0a] border-b border-white/[0.05]">
+          <DialogTitle className="text-2xl font-black">Application Details</DialogTitle>
+          <DialogDescription className="text-[#888]">
+            Review the instructor application from <span className="text-white font-bold">{application.user.name}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-6 py-4 md:grid-cols-2">
           {/* Personal Information */}
-          <div className="p-4 space-y-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-            <h3 className="pb-1 text-sm font-semibold text-gray-500 border-b dark:border-gray-700">
+          <div className="p-5 space-y-4 rounded-xl bg-[#050505] border border-white/[0.05]">
+            <h3 className="pb-2 text-xs font-bold tracking-widest uppercase text-[#E8602E] border-b border-white/[0.05]">
               Personal Information
             </h3>
-            <div className="grid gap-2">
+            <div className="grid gap-3">
               <div>
-                <span className="text-sm font-medium">Name:</span>
-                <p className="text-sm">{application.user.name}</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Name:</span>
+                <p className="text-sm font-bold text-white">{application.user.name}</p>
               </div>
               <div>
-                <span className="text-sm font-medium">Email:</span>
-                <p className="text-sm break-all">{application.user.email}</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Email:</span>
+                <p className="text-sm font-bold text-white break-all">{application.user.email}</p>
               </div>
               <div>
-                <span className="text-sm font-medium">Phone:</span>
-                <p className="text-sm">{application.phone}</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Phone:</span>
+                <p className="text-sm font-bold text-white">{application.phone}</p>
               </div>
               <div>
-                <span className="text-sm font-medium">Aadhaar:</span>
-                <p className="text-sm">{application.aadhaar}</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Aadhaar:</span>
+                <p className="text-sm font-bold text-white">{application.aadhaar}</p>
               </div>
             </div>
           </div>
 
           {/* Professional Information */}
-          <div className="p-4 space-y-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-            <h3 className="pb-1 text-sm font-semibold text-gray-500 border-b dark:border-gray-700">
+          <div className="p-5 space-y-4 rounded-xl bg-[#050505] border border-white/[0.05]">
+            <h3 className="pb-2 text-xs font-bold tracking-widest uppercase text-[#E8602E] border-b border-white/[0.05]">
               Professional Information
             </h3>
-            <div className="grid gap-2">
+            <div className="grid gap-3">
               <div>
-                <span className="text-sm font-medium">Experience:</span>
-                <p className="text-sm">{application.experience} years</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Experience:</span>
+                <p className="text-sm font-bold text-white">{application.experience} years</p>
               </div>
               <div>
-                <span className="text-sm font-medium">Qualification:</span>
-                <p className="text-sm">{application.qualification}</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Qualification:</span>
+                <p className="text-sm font-bold text-white">{application.qualification}</p>
               </div>
               <div>
-                <span className="text-sm font-medium">Expertise:</span>
-                <p className="text-sm">{application.expertise}</p>
+                <span className="text-xs font-bold text-[#888] uppercase tracking-wider block mb-1">Expertise:</span>
+                <p className="text-sm font-bold text-white">{application.expertise}</p>
               </div>
             </div>
           </div>
 
           {/* Reason for Application */}
-          <div className="col-span-1 space-y-3 md:col-span-2">
-            <h3 className="pb-1 text-sm font-semibold text-gray-500 border-b dark:border-gray-700">
+          <div className="col-span-1 space-y-4 md:col-span-2">
+            <h3 className="pb-2 text-xs font-bold tracking-widest uppercase text-[#E8602E] border-b border-white/[0.05]">
               Reason for Application
             </h3>
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg max-h-[200px] overflow-y-auto">
-              <p className="text-sm break-words whitespace-pre-wrap">{application.reason}</p>
+            <div className="p-5 bg-[#050505] border border-white/[0.05] rounded-xl max-h-[200px] overflow-y-auto">
+              <p className="text-sm text-[#aaa] leading-relaxed break-words whitespace-pre-wrap">{application.reason}</p>
             </div>
           </div>
 
           {/* Resume */}
-          <div className="col-span-1 space-y-3 md:col-span-2">
-            <h3 className="pb-1 text-sm font-semibold text-gray-500 border-b dark:border-gray-700">
+          <div className="col-span-1 space-y-4 md:col-span-2">
+            <h3 className="pb-2 text-xs font-bold tracking-widest uppercase text-[#E8602E] border-b border-white/[0.05]">
               Resume
             </h3>
 
             {/* Check for resume URL */}
             {application.resumeUrl ? (
               <div className="space-y-4">
-                <div className="flex flex-col items-center gap-3 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                  <p className="text-sm text-center text-gray-700 dark:text-gray-300">
+                <div className="flex flex-col items-center gap-3 p-5 border border-[#E8602E]/20 rounded-xl bg-[#E8602E]/[0.02]">
+                  <p className="text-sm text-center text-[#888]">
                     Click the button below to view the applicant's resume in a new tab
                   </p>
-                  <Button className="w-full gap-2 sm:w-auto" asChild>
+                  <Button className="w-full gap-2 sm:w-auto bg-[#E8602E] text-white hover:bg-[#d4561f] shadow-lg shadow-[#E8602E]/20" asChild>
                     <a
                       href={application.resumeUrl}
                       target="_blank"
@@ -361,13 +362,13 @@ const ApplicationDetailsDialog = ({
                       View Resume
                     </a>
                   </Button>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-[#555] font-bold uppercase tracking-widest">
                     (PDF, DOC, or DOCX file)
                   </span>
                 </div>
 
                 {/* Embedded document viewer */}
-                <div className="border rounded-lg overflow-hidden h-[400px] bg-gray-50 dark:bg-gray-900">
+                <div className="border border-white/[0.05] rounded-xl overflow-hidden h-[400px] bg-[#050505]">
                   {(() => {
                     const resumeUrl = application.resumeUrl;
 
@@ -386,11 +387,11 @@ const ApplicationDetailsDialog = ({
 
                     return isPdf ? (
                       <div className="flex flex-col items-center justify-center w-full h-full">
-                        <div className="mb-4 text-gray-600">
+                        <div className="mb-4 text-[#888]">
                           <p>PDF viewer may not work directly due to security restrictions.</p>
-                          <p className="mt-2 text-sm">Please use the button below to view the resume:</p>
+                          <p className="mt-2 text-sm text-center">Please use the button below to view the resume:</p>
                         </div>
-                        <Button className="mt-2" asChild>
+                        <Button className="mt-2 bg-white/[0.05] hover:bg-white/[0.1] text-white" asChild>
                           <a
                             href={cleanPdfUrl}
                             target="_blank"
@@ -410,20 +411,20 @@ const ApplicationDetailsDialog = ({
                       </div>
                     ) : (
                     <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-[#333]">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                         <line x1="16" y1="13" x2="8" y2="13"></line>
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                         <polyline points="10 9 9 9 8 9"></polyline>
                       </svg>
-                      <p className="mb-2 text-gray-600 dark:text-gray-300">
+                      <p className="mb-2 text-[#aaa]">
                         This document type cannot be previewed directly
                       </p>
-                      <p className="mb-4 text-sm text-gray-500">
+                      <p className="mb-4 text-sm text-[#555]">
                         Please use the "Open Resume in New Tab" button to view this document
                       </p>
-                      <Button variant="outline" className="gap-2" asChild>
+                      <Button variant="outline" className="gap-2 border-white/[0.1] text-white hover:bg-white/[0.05]" asChild>
                         <a href={cleanPdfUrl || resumeUrl} target="_blank" rel="noopener noreferrer">
                           Open Document
                         </a>
@@ -434,41 +435,41 @@ const ApplicationDetailsDialog = ({
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center rounded-lg bg-gray-50 dark:bg-gray-900">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3 text-gray-400">
+              <div className="p-6 text-center rounded-xl bg-[#050505] border border-white/[0.05]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3 text-[#333]">
                   <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
                   <path d="M13 2v7h7"></path>
                   <circle cx="12" cy="15" r="1"></circle>
                   <path d="M12 12v.01"></path>
                 </svg>
-                <p className="mb-2 text-gray-600 dark:text-gray-300">No resume was uploaded</p>
-                <p className="text-sm text-gray-500">The applicant did not provide a resume with their application.</p>
+                <p className="mb-2 text-[#aaa] font-bold">No resume was uploaded</p>
+                <p className="text-sm text-[#555]">The applicant did not provide a resume with their application.</p>
               </div>
             )}
           </div>
         </div>
 
-        <DialogFooter className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 pt-2 bg-white dark:bg-gray-950">
+        <DialogFooter className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 pt-4 bg-[#0a0a0a] border-t border-white/[0.05]">
           {status === 'pending' && (
             <>
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={onReject}
                 disabled={isUpdating}
-                className="gap-1"
+                className="gap-2 text-red-500 hover:text-red-400 hover:bg-red-500/10"
               >
                 <XCircle className="w-4 h-4" /> Reject
               </Button>
               <Button
                 onClick={onApprove}
                 disabled={isUpdating}
-                className="gap-1"
+                className="gap-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/20"
               >
                 <CheckCircle className="w-4 h-4" /> Approve
               </Button>
             </>
           )}
-          <Button variant="secondary" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={onClose} className="hover:bg-white/[0.04] text-[#aaa]">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

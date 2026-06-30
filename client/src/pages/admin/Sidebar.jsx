@@ -27,15 +27,20 @@ const AdminSidebar = () => {
   }, [isSuccess, data, navigate]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#060606]">
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-[260px] flex-col border-r border-gray-200 dark:border-gray-800 p-5 sticky top-0 h-screen bg-gradient-to-b from-gray-100 to-gray-300 dark:from-gray-900 dark:to-gray-800 shadow-lg">
-        <nav className="flex flex-col mt-20 space-y-6">
+      <aside className="hidden lg:flex w-[260px] flex-col border-r border-white/[0.05] p-5 sticky top-0 h-screen bg-[#050505] shadow-2xl relative overflow-hidden">
+        {/* Subtle mesh glow in sidebar */}
+        <div className="absolute -top-40 -left-40 w-[300px] h-[300px] rounded-full bg-[#E8602E]/[0.03] blur-[100px] pointer-events-none" />
+        
+        <nav className="flex flex-col mt-20 space-y-4 relative z-10">
           <NavLink
             to="dashboard"
             className={({ isActive }) =>
-              `flex items-center gap-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700 ${
-                isActive ? "bg-gray-300 dark:bg-gray-700 font-semibold border-l-4 border-blue-500 pl-5" : "pl-4"
+              `flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 group ${
+                isActive 
+                  ? "bg-gradient-to-r from-[#E8602E]/10 to-transparent border-l-2 border-[#E8602E] text-white shadow-[inset_0_0_20px_rgba(232,96,46,0.05)]" 
+                  : "text-[#888] hover:bg-white/[0.02] hover:text-white"
               }`
             }
             aria-label="Dashboard"
@@ -47,8 +52,10 @@ const AdminSidebar = () => {
           <NavLink
             to="applications"
             className={({ isActive }) =>
-              `flex items-center gap-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700 ${
-                isActive ? "bg-gray-300 dark:bg-gray-700 font-semibold border-l-4 border-blue-500 pl-5" : "pl-4"
+              `flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 group ${
+                isActive 
+                  ? "bg-gradient-to-r from-[#E8602E]/10 to-transparent border-l-2 border-[#E8602E] text-white shadow-[inset_0_0_20px_rgba(232,96,46,0.05)]" 
+                  : "text-[#888] hover:bg-white/[0.02] hover:text-white"
               }`
             }
             aria-label="Instructor Applications"
@@ -60,8 +67,10 @@ const AdminSidebar = () => {
           <NavLink
             to="users"
             className={({ isActive }) =>
-              `flex items-center gap-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700 ${
-                isActive ? "bg-gray-300 dark:bg-gray-700 font-semibold border-l-4 border-blue-500 pl-5" : "pl-4"
+              `flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 group ${
+                isActive 
+                  ? "bg-gradient-to-r from-[#E8602E]/10 to-transparent border-l-2 border-[#E8602E] text-white shadow-[inset_0_0_20px_rgba(232,96,46,0.05)]" 
+                  : "text-[#888] hover:bg-white/[0.02] hover:text-white"
               }`
             }
             aria-label="Users"
@@ -73,8 +82,10 @@ const AdminSidebar = () => {
           <NavLink
             to="settings"
             className={({ isActive }) =>
-              `flex items-center gap-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-300 dark:hover:bg-gray-700 ${
-                isActive ? "bg-gray-300 dark:bg-gray-700 font-semibold border-l-4 border-blue-500 pl-5" : "pl-4"
+              `flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 group ${
+                isActive 
+                  ? "bg-gradient-to-r from-[#E8602E]/10 to-transparent border-l-2 border-[#E8602E] text-white shadow-[inset_0_0_20px_rgba(232,96,46,0.05)]" 
+                  : "text-[#888] hover:bg-white/[0.02] hover:text-white"
               }`
             }
             aria-label="Settings"
@@ -85,8 +96,8 @@ const AdminSidebar = () => {
 
           {/* Logout Button */}
           <Button
-            variant="destructive"
-            className="flex items-center gap-3 p-3 mt-auto transition-all duration-300 hover:bg-red-600"
+            variant="ghost"
+            className="flex items-center justify-start gap-3 p-3.5 mt-auto rounded-xl transition-all duration-300 text-red-500/80 hover:text-red-500 hover:bg-red-500/10 hover:border-l-2 hover:border-red-500"
             onClick={handleLogout}
           >
             <LogOut className="w-5 h-5" /> Logout
@@ -95,7 +106,7 @@ const AdminSidebar = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-auto bg-gray-50 dark:bg-gray-900">
+      <main className="flex-1 p-8 overflow-auto bg-[#060606] text-white">
         <Outlet />
       </main>
     </div>

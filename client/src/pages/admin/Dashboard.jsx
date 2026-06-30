@@ -23,47 +23,47 @@ const Dashboard = () => {
   const stats = data?.stats;
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+    <div className="space-y-8 relative">
+      <h1 className="text-3xl font-black text-white">Admin Dashboard</h1>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
           value={stats?.totalUsers || 0}
-          icon={<Users className="h-8 w-8 text-blue-500" />}
-          className="bg-blue-50 dark:bg-blue-950"
+          icon={<Users className="h-6 w-6 text-[#E8602E]" />}
+          className="group relative p-6 rounded-2xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/[0.05] hover:border-[#E8602E]/20 transition-all duration-300 hover:shadow-2xl hover:shadow-[#E8602E]/5 overflow-hidden"
         />
         <StatCard
           title="Students"
           value={stats?.totalStudents || 0}
-          icon={<User className="h-8 w-8 text-green-500" />}
-          className="bg-green-50 dark:bg-green-950"
+          icon={<User className="h-6 w-6 text-green-500" />}
+          className="group relative p-6 rounded-2xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/[0.05] hover:border-green-500/20 transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/5 overflow-hidden"
         />
         <StatCard
           title="Instructors"
           value={stats?.totalInstructors || 0}
-          icon={<GraduationCap className="h-8 w-8 text-amber-500" />}
-          className="bg-amber-50 dark:bg-amber-950"
+          icon={<GraduationCap className="h-6 w-6 text-amber-500" />}
+          className="group relative p-6 rounded-2xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/[0.05] hover:border-amber-500/20 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-500/5 overflow-hidden"
         />
         <StatCard
           title="Admins"
           value={stats?.totalAdmins || 0}
-          icon={<UserCog className="h-8 w-8 text-purple-500" />}
-          className="bg-purple-50 dark:bg-purple-950"
+          icon={<UserCog className="h-6 w-6 text-purple-500" />}
+          className="group relative p-6 rounded-2xl bg-[#0a0a0a]/50 backdrop-blur-md border border-white/[0.05] hover:border-purple-500/20 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/5 overflow-hidden"
         />
       </div>
 
       {/* Recent Users */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Users</CardTitle>
+      <Card className="bg-[#0a0a0a]/50 backdrop-blur-md border border-white/[0.05] overflow-hidden">
+        <CardHeader className="border-b border-white/[0.05] bg-white/[0.01]">
+          <CardTitle className="text-lg font-black text-white">Recent Users</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {stats?.recentUsers?.map((user) => (
-              <div key={user._id} className="flex items-center gap-4 p-3 rounded-lg border">
-                <Avatar>
+        <CardContent className="p-0">
+          <div className="flex flex-col">
+            {stats?.recentUsers?.map((user, i) => (
+              <div key={user._id} className={`flex items-center gap-4 p-4 ${i !== (stats?.recentUsers?.length - 1) ? "border-b border-white/[0.05]" : ""} hover:bg-white/[0.02] transition-colors`}>
+                <Avatar className="h-10 w-10 border border-white/[0.1]">
                   <AvatarImage
                     src={
                       user.photoUrl ||
@@ -74,19 +74,19 @@ const Dashboard = () => {
                           : "https://cdn-icons-png.flaticon.com/128/1945/1945977.png")
                     }
                   />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="bg-[#111] text-white">{user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-medium">{user.name}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                  <h3 className="font-bold text-white text-sm">{user.name}</h3>
+                  <p className="text-xs text-[#888]">{user.email}</p>
                 </div>
-                <div className="text-sm">
-                  <span className={`px-2 py-1 rounded-full ${
+                <div className="text-xs">
+                  <span className={`px-2.5 py-1 rounded-full font-bold uppercase tracking-wider text-[10px] border ${
                     user.role === 'admin'
-                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
                       : user.role === 'instructor'
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
-                        : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        : 'bg-green-500/10 text-green-400 border-green-500/20'
                   }`}>
                     {user.role}
                   </span>
@@ -102,17 +102,19 @@ const Dashboard = () => {
 
 const StatCard = ({ title, value, icon, className }) => {
   return (
-    <Card className={className}>
-      <CardContent className="flex items-center justify-between p-6">
-        <div>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <h3 className="text-3xl font-bold mt-1">{value}</h3>
-        </div>
-        <div className="p-3 rounded-full bg-white dark:bg-gray-800 shadow-sm">
+    <div className={className}>
+      {/* Background glow on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-white/0 group-hover:from-white/[0.02] group-hover:to-transparent transition-all duration-500 rounded-2xl" />
+
+      <div className="relative flex items-start justify-between mb-4">
+        <div className="w-12 h-12 flex items-center justify-center bg-white/[0.04] rounded-xl border border-white/[0.08] group-hover:bg-white/[0.08] transition-colors">
           {icon}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      
+      <p className="relative text-xs font-bold text-[#888] tracking-wide uppercase mb-1">{title}</p>
+      <h3 className="relative text-4xl font-black text-white">{value}</h3>
+    </div>
   );
 };
 
