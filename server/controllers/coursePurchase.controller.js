@@ -45,6 +45,8 @@ export const createCheckoutSession = async (req, res) => {
       status: newPurchase.status
     });
 
+    const origin = process.env.FRONTEND_URL || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.get('host')}`;
+
     // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -62,8 +64,8 @@ export const createCheckoutSession = async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `http://localhost:5173/course-progress/${courseId}`,
-      cancel_url: `http://localhost:5173/course-detail/${courseId}`,
+      success_url: `${origin}/course-progress/${courseId}`,
+      cancel_url: `${origin}/course-detail/${courseId}`,
       metadata: {
         courseId: courseId,
         userId: userId,
